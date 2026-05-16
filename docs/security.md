@@ -11,6 +11,7 @@ BrokerOps uses security controls that are appropriate for a production-capable S
 - secrets supplied through environment-specific configuration
 - audit events for system actions
 - provider and prompt version tracking for AI reviews
+- provider/model metadata for AI reviews
 - security group boundaries between ALB, service, database, and cache
 - manual approval for production deployment
 
@@ -22,9 +23,12 @@ The AI-assisted review path uses structured evidence only. The system stores:
 - evidence IDs
 - prompt version
 - provider
+- model metadata
 - confidence
 - missing information
 - generated summary
 - recommended next step
 
 This design keeps the AI layer reviewable and auditable.
+
+If structured evidence is missing, the review path records a `not_enough_information` response and lists the missing fields instead of generating unsupported analysis.

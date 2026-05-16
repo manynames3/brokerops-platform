@@ -1,6 +1,7 @@
 SHELL := /bin/bash
+PNPM ?= npx --yes pnpm@9.12.3
 
-.PHONY: local-up local-down local-reset local-seed local-smoke test lint preview-plan preview-up preview-smoke preview-down production-plan verify-teardown evidence
+.PHONY: local-up local-down local-reset local-seed local-smoke docker-config test lint typecheck terraform-fmt terraform-validate validate-local preview-plan preview-up preview-smoke preview-down production-plan verify-teardown evidence
 
 local-up:
 	docker compose up --build
@@ -19,21 +20,35 @@ local-smoke:
 	curl -fsS http://localhost:8080/health
 	curl -fsS http://localhost:8080/exceptions
 
+docker-config:
+	docker compose config
+
 test:
-	corepack enable
-	pnpm install
-	pnpm -r test
+	$(PNPM) install
+	$(PNPM) -r test
 
 lint:
-	corepack enable
-	pnpm install
-	pnpm -r lint
+	$(PNPM) install
+	$(PNPM) -r lint
+
+typecheck:
+	$(PNPM) install
+	$(PNPM) -r typecheck
+
+terraform-fmt:
+	terraform fmt -check -recursive infra/terraform
+
+terraform-validate:
+	cd infra/terraform/environments/preview && terraform init -backend=false && terraform validate
+	cd infra/terraform/environments/production && terraform init -backend=false && terraform validate
+
+validate-local: docker-config lint typecheck test terraform-fmt
 
 preview-plan:
-	cd infra/terraform/environments/preview && terraform init && terraform plan -out preview.tfplan
+	cd infra/terraform/environments/preview && terraform init && terraform plan -out preview.tfplan -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for preview planning}"
 
 preview-up:
-	cd infra/terraform/environments/preview && terraform init && terraform apply -auto-approve
+	cd infra/terraform/environments/preview && terraform init && terraform apply -auto-approve -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for preview apply}"
 
 preview-smoke:
 	bash scripts/smoke-test.sh
@@ -42,7 +57,7 @@ preview-down:
 	cd infra/terraform/environments/preview && terraform destroy -auto-approve
 
 production-plan:
-	cd infra/terraform/environments/production && terraform init && terraform plan -out production.tfplan
+	cd infra/terraform/environments/production && terraform init && terraform plan -out production.tfplan -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for production planning}"
 
 verify-teardown:
 	bash scripts/verify-teardown.sh

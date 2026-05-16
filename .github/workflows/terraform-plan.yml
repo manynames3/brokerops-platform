@@ -14,6 +14,9 @@ permissions:
 jobs:
   preview-plan:
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_container_image: 000000000000.dkr.ecr.us-east-1.amazonaws.com/brokerops-api:preview-plan
+      TF_VAR_database_password: preview-plan-only-password
     defaults:
       run:
         working-directory: infra/terraform/environments/preview

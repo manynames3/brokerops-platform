@@ -5,6 +5,7 @@ import { initializeTelemetry } from "./telemetry.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerStatementRoutes } from "./routes/statements.js";
 import { registerExceptionRoutes } from "./routes/exceptions.js";
+import { registerDashboardRoutes } from "./routes/dashboard.js";
 
 initializeTelemetry();
 
@@ -13,6 +14,7 @@ const app = Fastify({ logger: true });
 await app.register(cors, { origin: true });
 
 await registerHealthRoutes(app);
+await registerDashboardRoutes(app);
 await registerStatementRoutes(app);
 await registerExceptionRoutes(app);
 

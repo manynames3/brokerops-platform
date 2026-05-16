@@ -5,6 +5,7 @@ BrokerOps Platform separates product workflow concerns from platform concerns.
 ## Product workflow
 
 - Carrier statement ingestion
+- CSV validation
 - Transaction normalization
 - Policy matching
 - Reconciliation exception creation
@@ -57,9 +58,16 @@ Primary tables:
 - ai_reviews
 - audit_events
 
+## API workflow boundaries
+
+- `POST /statements/import` validates CSV input, normalizes statement rows into PostgreSQL, runs deterministic reconciliation, creates exceptions, and records audit events in a single transaction.
+- `GET /dashboard/summary` exposes operational counts for the dashboard.
+- `POST /exceptions/:id/ai-review` creates an evidence-grounded review from database records only.
+- `PATCH /exceptions/:id/review` records human workflow status changes and audit metadata.
+
 ## AI review boundary
 
-The AI review layer receives structured evidence. It does not query unrestricted data. Outputs are stored with evidence IDs, provider, prompt version, confidence, and missing information.
+The AI review layer receives structured evidence. It does not query unrestricted data. Outputs are stored with evidence IDs, provider, prompt version, provider/model metadata, confidence, and missing information. If required evidence is absent, the service returns `not_enough_information` and records the missing fields.
 
 ## Release path
 

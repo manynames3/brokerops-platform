@@ -9,12 +9,13 @@ BrokerOps uses environment-aware architecture: local development runs the full a
 ## Core workflow
 
 1. Carrier statements are ingested from structured CSV data.
-2. Rows are normalized into PostgreSQL.
-3. Reconciliation logic matches statement rows against expected policy records.
-4. Exceptions are created for mismatches, missing records, duplicates, and unexpected amounts.
-5. The AI-assisted review layer explains exceptions using structured evidence only.
-6. Review decisions and system events are written to an audit trail.
-7. Dashboards and metrics expose workflow health and infrastructure health.
+2. CSV rows are validated before any database writes occur.
+3. Rows are normalized into PostgreSQL.
+4. Reconciliation logic matches statement rows against expected policy records.
+5. Exceptions are created for mismatches, missing records, duplicate payments, account mismatches, and unexpected amounts.
+6. The AI-assisted review layer explains exceptions using structured evidence only.
+7. Human review decisions and system events are written to an audit trail.
+8. Dashboards and metrics expose workflow health and infrastructure health.
 
 ## Stack
 
@@ -43,6 +44,8 @@ make local-seed
 ### Preview environment
 
 ```bash
+export CONTAINER_IMAGE=ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/brokerops-api:preview
+export DATABASE_PASSWORD=replace-with-secure-preview-password
 make preview-plan
 make preview-up
 make preview-smoke
@@ -54,6 +57,8 @@ Preview environments are intentionally short-lived. This is not because the syst
 ### Production profile
 
 ```bash
+export CONTAINER_IMAGE=ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/brokerops-api:production
+export DATABASE_PASSWORD=replace-with-secure-production-password
 make production-plan
 ```
 
@@ -73,6 +78,35 @@ Then open:
 - Web: http://localhost:3000
 - API health: http://localhost:8080/health
 
+## Statement import API
+
+Local development supports JSON-wrapped CSV imports so the workflow can be exercised without cloud services:
+
+```bash
+curl -fsS http://localhost:8080/statements/import \
+  -H 'content-type: application/json' \
+  -d '{
+    "carrierName": "Northstar Mutual",
+    "fileName": "northstar-february.csv",
+    "actor": "local-developer",
+    "csv": "external_policy_id,account_name,payment_date,premium_cents,commission_rate,commission_amount_cents\nPOL-1001,Acme Manufacturing,2026-02-15,100000,10%,10000"
+  }'
+```
+
+Required CSV headers are `external_policy_id`, `account_name`, `payment_date`, `premium_cents`, `commission_rate`, and `commission_amount_cents`.
+
+## Human review API
+
+Exceptions support review status changes with audit events:
+
+```bash
+curl -fsS -X PATCH http://localhost:8080/exceptions/$EXCEPTION_ID/review \
+  -H 'content-type: application/json' \
+  -d '{"status":"in_review","actor":"local-reviewer","note":"Investigating carrier rate change"}'
+```
+
+Allowed statuses are `open`, `in_review`, and `resolved`.
+
 ## Cost-conscious architecture
 
 Cost control is treated as a platform requirement.
@@ -82,3 +116,17 @@ The platform separates always-on production design from cost-conscious preview i
 ## AI-assisted exception review
 
 The AI layer is evidence-grounded. It summarizes reconciliation exceptions using only structured records from PostgreSQL and returns a structured response with summary, likely cause, recommended next step, evidence IDs, confidence, and missing information.
+
+AI reviews also persist prompt version and provider/model metadata. If the structured evidence is incomplete, the AI path returns a controlled `not_enough_information` review instead of inventing context.
+
+## Validation
+
+Run local checks before opening a PR:
+
+```bash
+make validate-local
+```
+
+This runs Docker Compose configuration validation, TypeScript lint/type checks, tests, and Terraform formatting. It does not create AWS resources.
+
+The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` values so cost-bearing deployments do not use placeholder runtime inputs.

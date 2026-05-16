@@ -34,6 +34,20 @@ make preview-down
 make verify-teardown
 ```
 
+## Cost boundary
+
+Local validation commands stop before meaningful AWS cost. `make validate-local`, `docker compose config`, TypeScript checks, unit tests, and Terraform formatting do not create cloud resources.
+
+The first command in the documented path that can create meaningful AWS cost is:
+
+```bash
+make preview-up
+```
+
+Run `make preview-plan` first to inspect the cost-bearing resource set. Use `make preview-down` and `make verify-teardown` after preview validation.
+
+Cost-bearing Terraform commands require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` inputs. This prevents accidental preview or production applies with placeholder images or database credentials.
+
 ## Production cost posture
 
 Production is intentionally not optimized the same way as preview. It prioritizes reliability, backups, observability, and availability. Cost decisions should be evaluated through sizing, reserved capacity, traffic patterns, and operational requirements rather than by weakening core architecture controls.

@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS ai_reviews (
   exception_id UUID NOT NULL REFERENCES reconciliation_exceptions(id),
   provider TEXT NOT NULL,
   prompt_version TEXT NOT NULL,
+  review_status TEXT NOT NULL DEFAULT 'complete',
+  model_metadata JSONB NOT NULL DEFAULT '{}',
   summary TEXT NOT NULL,
   likely_cause TEXT NOT NULL,
   recommended_next_step TEXT NOT NULL,

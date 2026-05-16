@@ -24,7 +24,7 @@ resource "aws_cloudwatch_metric_alarm" "target_response_time" {
   metric_name         = "TargetResponseTime"
   namespace           = "AWS/ApplicationELB"
   period              = 60
-  statistic           = "p95"
+  extended_statistic  = "p95"
   threshold           = 1
   treat_missing_data  = "notBreaching"
 

@@ -6,10 +6,18 @@ variable "aws_region" {
 variable "database_password" {
   type      = string
   sensitive = true
-  default   = "replace-this-password"
+
+  validation {
+    condition     = length(var.database_password) >= 20
+    error_message = "production database_password must be at least 20 characters."
+  }
 }
 
 variable "container_image" {
-  type    = string
-  default = "public.ecr.aws/docker/library/nginx:latest"
+  type = string
+
+  validation {
+    condition     = length(var.container_image) > 0
+    error_message = "container_image must be an explicit API image URI."
+  }
 }

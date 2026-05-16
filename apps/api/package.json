@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
-    "test": "tsx src/__tests__/reconciliation.test.ts",
+    "test": "tsx src/__tests__/reconciliation.test.ts && tsx src/__tests__/csvStatement.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

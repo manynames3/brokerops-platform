@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { query } from "../db.js";
+import { importStatementCsv, type StatementImportRequest } from "../services/statementImport.js";
 
 export async function registerStatementRoutes(app: FastifyInstance) {
   app.get("/statements", async () => {
@@ -37,5 +38,24 @@ export async function registerStatementRoutes(app: FastifyInstance) {
     );
 
     return { rows: result.rows };
+  });
+
+  app.post("/statements/import", async (request, reply) => {
+    const body = request.body as Partial<StatementImportRequest> | undefined;
+    const result = await importStatementCsv({
+      carrierName: body?.carrierName || "",
+      fileName: body?.fileName || "",
+      csv: body?.csv || "",
+      actor: body?.actor
+    });
+
+    if (!result.ok) {
+      return reply.status(422).send({
+        error: "csv_validation_failed",
+        errors: result.errors
+      });
+    }
+
+    return reply.status(201).send(result);
   });
 }

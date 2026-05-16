@@ -6,6 +6,9 @@ on:
       confirm_environment:
         description: "Type production to confirm"
         required: true
+      container_image:
+        description: "Immutable API image URI to deploy"
+        required: true
 
 permissions:
   id-token: write
@@ -30,10 +33,16 @@ jobs:
 
       - name: Plan production
         working-directory: infra/terraform/environments/production
+        env:
+          TF_VAR_container_image: ${{ github.event.inputs.container_image }}
+          TF_VAR_database_password: ${{ secrets.PRODUCTION_DATABASE_PASSWORD }}
         run: |
           terraform init
           terraform plan -out production.tfplan
 
       - name: Apply production
         working-directory: infra/terraform/environments/production
+        env:
+          TF_VAR_container_image: ${{ github.event.inputs.container_image }}
+          TF_VAR_database_password: ${{ secrets.PRODUCTION_DATABASE_PASSWORD }}
         run: terraform apply -auto-approve production.tfplan

@@ -22,10 +22,15 @@ export interface ReconciliationException {
 
 export interface AiExceptionReview {
   exceptionId: string;
+  reviewStatus: "complete" | "not_enough_information";
   summary: string;
   likelyCause: string;
   recommendedNextStep: string;
   evidenceIds: string[];
   confidence: "low" | "medium" | "high";
   missingInformation: string[];
+  promptVersion: string;
+  provider: string;
+  model: string;
+  modelMetadata: Record<string, string>;
 }

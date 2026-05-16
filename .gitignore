@@ -3,6 +3,7 @@ node_modules
 .next
 dist
 coverage
+*.tsbuildinfo
 .env
 .env.local
 .DS_Store
@@ -10,5 +11,6 @@ terraform.tfstate
 terraform.tfstate.backup
 .terraform
 .terraform.lock.hcl
+!infra/terraform/environments/**/.terraform.lock.hcl
 *.tfplan
 docs/evidence/generated/
