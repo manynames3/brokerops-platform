@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -46,3 +48,18 @@ jobs:
           TF_VAR_container_image: ${{ github.event.inputs.container_image }}
           TF_VAR_database_password: ${{ secrets.PRODUCTION_DATABASE_PASSWORD }}
         run: terraform apply -auto-approve production.tfplan
+
+      - name: Run production database migrations
+        run: |
+          export ECS_CLUSTER_NAME="$(terraform -chdir=infra/terraform/environments/production output -raw ecs_cluster_name)"
+          export ECS_TASK_DEFINITION_ARN="$(terraform -chdir=infra/terraform/environments/production output -raw ecs_task_definition_arn)"
+          export ECS_SUBNET_IDS="$(terraform -chdir=infra/terraform/environments/production output -raw ecs_service_subnet_ids_csv)"
+          export ECS_SECURITY_GROUP_ID="$(terraform -chdir=infra/terraform/environments/production output -raw ecs_service_security_group_id)"
+          export ECS_ASSIGN_PUBLIC_IP="$(terraform -chdir=infra/terraform/environments/production output -raw ecs_assign_public_ip)"
+          bash scripts/run-ecs-migration.sh
+
+      - name: Wait for production service
+        run: |
+          aws ecs wait services-stable \
+            --cluster "$(terraform -chdir=infra/terraform/environments/production output -raw ecs_cluster_name)" \
+            --services "$(terraform -chdir=infra/terraform/environments/production output -raw ecs_service_name)"

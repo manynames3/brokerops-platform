@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "migrate": "tsx src/migrate.ts",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
     "test": "tsx src/__tests__/reconciliation.test.ts && tsx src/__tests__/csvStatement.test.ts && tsx src/__tests__/aiExceptionReview.test.ts && tsx src/__tests__/reviewWorkflow.test.ts",

@@ -14,6 +14,7 @@ WORKDIR /workspace
 
 COPY apps/api apps/api
 COPY packages/shared packages/shared
+COPY packages/db/migrations packages/db/migrations
 
 RUN pnpm --filter @brokerops/api build
 RUN pnpm prune --prod
@@ -32,6 +33,7 @@ COPY --from=build /workspace/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build /workspace/packages/shared/package.json ./packages/shared/package.json
 COPY --from=build /workspace/packages/shared/src ./packages/shared/src
+COPY --from=build /workspace/packages/db/migrations ./packages/db/migrations
 
 EXPOSE 8080
 

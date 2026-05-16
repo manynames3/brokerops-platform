@@ -29,6 +29,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -71,8 +73,25 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
+      - name: Run preview database migrations
+        run: |
+          export ECS_CLUSTER_NAME="$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_cluster_name)"
+          export ECS_TASK_DEFINITION_ARN="$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_task_definition_arn)"
+          export ECS_SUBNET_IDS="$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_service_subnet_ids_csv)"
+          export ECS_SECURITY_GROUP_ID="$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_service_security_group_id)"
+          export ECS_ASSIGN_PUBLIC_IP="$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_assign_public_ip)"
+          bash scripts/run-ecs-migration.sh
+
+      - name: Wait for preview service
+        run: |
+          aws ecs wait services-stable \
+            --cluster "$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_cluster_name)" \
+            --services "$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_service_name)"
+
       - name: Smoke test
-        run: bash scripts/smoke-test.sh
+        run: |
+          API_URL="http://$(terraform -chdir=infra/terraform/environments/preview output -raw alb_dns_name)" bash scripts/smoke-test.sh
 
       - name: Capture evidence
-        run: bash scripts/capture-evidence.sh
+        run: |
+          API_URL="http://$(terraform -chdir=infra/terraform/environments/preview output -raw alb_dns_name)" bash scripts/capture-evidence.sh

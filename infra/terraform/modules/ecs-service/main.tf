@@ -1,5 +1,9 @@
 data "aws_region" "current" {}
 
+locals {
+  service_security_group_id = coalesce(var.service_security_group_id, one(aws_security_group.service[*].id))
+}
+
 resource "aws_ecs_cluster" "this" {
   name = var.name
 
@@ -37,6 +41,8 @@ resource "aws_security_group_rule" "alb_out" {
 }
 
 resource "aws_security_group" "service" {
+  count = var.service_security_group_id == null ? 1 : 0
+
   name        = "${var.name}-service"
   description = "BrokerOps ECS service"
   vpc_id      = var.vpc_id
@@ -45,7 +51,7 @@ resource "aws_security_group" "service" {
 
 resource "aws_security_group_rule" "service_from_alb" {
   type                     = "ingress"
-  security_group_id        = aws_security_group.service.id
+  security_group_id        = local.service_security_group_id
   from_port                = var.container_port
   to_port                  = var.container_port
   protocol                 = "tcp"
@@ -54,7 +60,7 @@ resource "aws_security_group_rule" "service_from_alb" {
 
 resource "aws_security_group_rule" "service_out" {
   type              = "egress"
-  security_group_id = aws_security_group.service.id
+  security_group_id = local.service_security_group_id
   from_port         = 0
   to_port           = 0
   protocol          = "-1"
@@ -187,7 +193,7 @@ resource "aws_ecs_service" "api" {
 
   network_configuration {
     subnets          = var.subnet_ids
-    security_groups  = [aws_security_group.service.id]
+    security_groups  = [local.service_security_group_id]
     assign_public_ip = var.assign_public_ip
   }
 

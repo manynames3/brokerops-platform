@@ -52,7 +52,7 @@ make preview-smoke
 make preview-down
 ```
 
-Preview environments are intentionally short-lived. This is not because the system is incomplete. It is because non-production infrastructure should not create unnecessary idle cost.
+`make preview-up` applies the preview profile and runs the database migration task inside ECS before smoke testing. `make preview-smoke` resolves the preview ALB DNS name from Terraform output, so validation targets the deployed service instead of a local process. Preview environments are intentionally short-lived. This is not because the system is incomplete. It is because non-production infrastructure should not create unnecessary idle cost.
 
 ### Production profile
 
@@ -129,4 +129,4 @@ make validate-local
 
 This runs Docker Compose configuration validation, TypeScript lint/type checks, tests, and Terraform formatting. It does not create AWS resources.
 
-The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` values so cost-bearing deployments do not use placeholder runtime inputs.
+The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Terraform wires the ECS task to the RDS and ElastiCache endpoints, then GitHub Actions runs a one-shot ECS migration task before hitting the preview ALB with the smoke workflow. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` values so cost-bearing deployments do not use placeholder runtime inputs.

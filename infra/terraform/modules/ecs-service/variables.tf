@@ -28,6 +28,12 @@ variable "assign_public_ip" {
   default = true
 }
 
+variable "service_security_group_id" {
+  type        = string
+  default     = null
+  description = "Optional pre-created ECS service security group. When omitted, the module creates one."
+}
+
 variable "environment" {
   type    = map(string)
   default = {}

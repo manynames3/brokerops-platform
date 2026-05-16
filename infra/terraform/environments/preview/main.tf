@@ -22,6 +22,9 @@ locals {
     TTL         = "24h"
     ManagedBy   = "terraform"
   }
+
+  database_url = "postgres://${module.rds.username}:${urlencode(var.database_password)}@${module.rds.endpoint}/${module.rds.database_name}"
+  redis_url    = "rediss://${module.cache.primary_endpoint_address}:6379"
 }
 
 module "network" {
@@ -31,19 +34,29 @@ module "network" {
   tags               = local.tags
 }
 
+resource "aws_security_group" "service" {
+  name        = "${local.name}-runtime-service"
+  description = "BrokerOps preview ECS service"
+  vpc_id      = module.network.vpc_id
+  tags        = merge(local.tags, { Name = "${local.name}-runtime-service" })
+}
+
 module "ecs_service" {
-  source           = "../../modules/ecs-service"
-  name             = local.name
-  vpc_id           = module.network.vpc_id
-  subnet_ids       = module.network.public_subnet_ids
-  container_image  = var.container_image
-  desired_count    = 1
-  cpu              = 256
-  memory           = 512
-  assign_public_ip = true
+  source                    = "../../modules/ecs-service"
+  name                      = local.name
+  vpc_id                    = module.network.vpc_id
+  subnet_ids                = module.network.public_subnet_ids
+  container_image           = var.container_image
+  desired_count             = 1
+  cpu                       = 256
+  memory                    = 512
+  assign_public_ip          = true
+  service_security_group_id = aws_security_group.service.id
   environment = {
-    NODE_ENV    = "preview"
-    AI_PROVIDER = "local"
+    NODE_ENV     = "preview"
+    AI_PROVIDER  = "local"
+    DATABASE_URL = local.database_url
+    REDIS_URL    = local.redis_url
   }
   tags = local.tags
 }
@@ -53,7 +66,7 @@ module "rds" {
   name                       = local.name
   vpc_id                     = module.network.vpc_id
   subnet_ids                 = module.network.private_subnet_ids
-  allowed_security_group_ids = [module.ecs_service.service_security_group_id]
+  allowed_security_group_ids = [aws_security_group.service.id]
   instance_class             = "db.t4g.micro"
   allocated_storage          = 20
   multi_az                   = false
@@ -67,7 +80,7 @@ module "cache" {
   name                       = local.name
   vpc_id                     = module.network.vpc_id
   subnet_ids                 = module.network.private_subnet_ids
-  allowed_security_group_ids = [module.ecs_service.service_security_group_id]
+  allowed_security_group_ids = [aws_security_group.service.id]
   node_type                  = "cache.t4g.micro"
   num_cache_clusters         = 1
   tags                       = local.tags

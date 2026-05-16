@@ -15,9 +15,9 @@ make preview-down
 make verify-teardown
 ```
 
-`make preview-plan` validates the AWS resource plan without creating resources. `make preview-up` is the cost-bearing step because it can create ECS, RDS, cache, load balancer, networking, logging, and alarm resources.
+`make preview-plan` validates the AWS resource plan without creating resources. `make preview-up` is the cost-bearing step because it can create ECS, RDS, cache, load balancer, networking, logging, and alarm resources. After Terraform apply, `make preview-up` runs the database migration as a one-shot ECS task using the deployed API image.
 
-The GitHub preview deployment builds `apps/api/Dockerfile`, pushes the image to ECR, and applies Terraform with `TF_VAR_container_image` set to that immutable image URI. The workflow expects `PREVIEW_DATABASE_PASSWORD` and `AWS_ROLE_ARN` secrets.
+The GitHub preview deployment builds `apps/api/Dockerfile`, pushes the image to ECR, and applies Terraform with `TF_VAR_container_image` set to that immutable image URI. Terraform passes the RDS `DATABASE_URL` and ElastiCache `REDIS_URL` into the ECS task definition. The workflow then runs the ECS migration task, waits for the service to stabilize, and runs smoke tests against the preview ALB DNS name. The workflow expects `PREVIEW_DATABASE_PASSWORD` and `AWS_ROLE_ARN` secrets.
 
 ## Production path
 
@@ -29,7 +29,7 @@ export DATABASE_PASSWORD=replace-with-secure-production-password
 make production-plan
 ```
 
-Production apply should happen through `.github/workflows/deploy-production.yml` with a confirmed environment and an explicit immutable `container_image` input. The workflow expects `PRODUCTION_DATABASE_PASSWORD` and `AWS_ROLE_ARN` secrets.
+Production apply should happen through `.github/workflows/deploy-production.yml` with a confirmed environment and an explicit immutable `container_image` input. The workflow applies Terraform, runs the same ECS-hosted database migration task against production RDS, and waits for the ECS service to stabilize. It expects `PRODUCTION_DATABASE_PASSWORD` and `AWS_ROLE_ARN` secrets.
 
 ## Release safety
 

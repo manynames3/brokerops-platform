@@ -52,7 +52,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: docker compose config
       - run: psql "$LOCAL_DATABASE_URL" -f packages/db/migrations/001_schema.sql
+      - run: pnpm --filter @brokerops/api migrate
       - run: pnpm --filter @brokerops/db seed
+      - run: bash -n scripts/smoke-test.sh scripts/run-ecs-migration.sh scripts/capture-evidence.sh
       - run: pnpm -r lint
       - run: pnpm -r typecheck
       - run: pnpm -r test

@@ -75,9 +75,11 @@ Blue and green target groups are part of the ECS service module. The rollout pro
 
 1. build image
 2. push image
-3. update inactive target group
-4. verify health checks
-5. run smoke tests
-6. shift listener traffic
-7. monitor alarms
-8. rollback if health checks fail
+3. apply environment-aware Terraform
+4. run database migrations from an ECS task in the target VPC
+5. update inactive target group
+6. verify health checks
+7. run smoke tests against the deployed ALB
+8. shift listener traffic
+9. monitor alarms
+10. rollback if health checks fail
