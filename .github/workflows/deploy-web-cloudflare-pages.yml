@@ -1,0 +1,49 @@
+name: deploy-web-cloudflare-pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "Public BrokerOps API base URL for the frontend"
+        required: true
+      branch:
+        description: "Cloudflare Pages deployment branch"
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy-web:
+    runs-on: ubuntu-latest
+
+    env:
+      CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'brokerops-platform-web' }}
+      NEXT_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @brokerops/web lint
+      - run: pnpm --filter @brokerops/web build
+
+      - name: Deploy web to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/web/out --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }} --branch=${{ github.event.inputs.branch }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

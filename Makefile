@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PNPM ?= npx --yes pnpm@9.12.3
 
-.PHONY: local-up local-down local-reset local-seed local-smoke docker-config docker-build-api test lint typecheck terraform-fmt terraform-validate validate-local preview-plan preview-up preview-migrate preview-smoke preview-down production-plan production-migrate verify-teardown evidence
+.PHONY: local-up local-down local-reset local-seed local-smoke docker-config docker-build-api web-build test lint typecheck terraform-fmt terraform-validate validate-local preview-plan preview-up preview-migrate preview-smoke preview-down production-plan production-migrate verify-teardown evidence
 
 local-up:
 	docker compose up --build
@@ -24,6 +24,9 @@ docker-config:
 
 docker-build-api:
 	docker build -f apps/api/Dockerfile -t brokerops-api:local .
+
+web-build:
+	NEXT_PUBLIC_API_URL=$${NEXT_PUBLIC_API_URL:-http://localhost:8080} $(PNPM) --filter @brokerops/web build
 
 test:
 	$(PNPM) install

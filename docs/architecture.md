@@ -27,12 +27,14 @@ BrokerOps Platform separates product workflow concerns from platform concerns.
 
 ```text
 Browser
-  -> Next.js web
+  -> Cloudflare Pages static Next.js web
   -> Node.js API
   -> PostgreSQL
   -> Redis-compatible cache
   -> Worker
 ```
+
+The end-user dashboard is exported as static assets and deployed through Cloudflare Pages. The browser calls the deployed BrokerOps API through a build-time `NEXT_PUBLIC_API_URL`, keeping frontend delivery separate from the PostgreSQL-backed API runtime.
 
 AWS profile:
 

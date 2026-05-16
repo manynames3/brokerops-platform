@@ -38,6 +38,7 @@ make lint
 make typecheck
 make docker-config
 make docker-build-api
+make web-build
 make validate-local
 make preview-migrate
 make preview-smoke
@@ -46,6 +47,8 @@ make preview-smoke
 `make preview-plan`, `make preview-up`, and `make production-plan` require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` values. This keeps cost-bearing infrastructure commands environment-aware and avoids placeholder runtime deployments.
 
 Preview smoke tests resolve the ALB DNS name from Terraform output. `scripts/smoke-test.sh` requires an explicit `API_URL`, which prevents a cloud validation run from accidentally testing a local API process.
+
+`make web-build` creates the static Next.js export for Cloudflare Pages. Set `NEXT_PUBLIC_API_URL` to the target API URL when building for preview or production.
 
 `make validate-local` includes an API Docker image build when Docker is available. CI also builds `apps/api/Dockerfile` before any deploy workflow runs, so container packaging problems are caught before AWS resources are created.
 

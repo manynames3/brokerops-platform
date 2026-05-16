@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
 type ExceptionRow = {
   id: string;
   kind: string;
@@ -33,51 +37,60 @@ const emptySummary: DashboardSummary = {
   latest_statement_at: null
 };
 
-async function getExceptions(): Promise<ExceptionRow[]> {
-  const baseUrl = process.env.API_INTERNAL_URL || "http://localhost:8080";
+const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080").replace(/\/$/, "");
 
-  try {
-    const response = await fetch(`${baseUrl}/exceptions`, { cache: "no-store" });
+export default function Home() {
+  const [summary, setSummary] = useState<DashboardSummary>(emptySummary);
+  const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "unavailable">("loading");
 
-    if (!response.ok) return [];
+  useEffect(() => {
+    let cancelled = false;
 
-    const data = await response.json();
-    return data.exceptions || [];
-  } catch {
-    return [];
-  }
-}
+    async function loadDashboard() {
+      setStatus("loading");
 
-async function getSummary(): Promise<DashboardSummary> {
-  const baseUrl = process.env.API_INTERNAL_URL || "http://localhost:8080";
+      try {
+        const [summaryResponse, exceptionsResponse] = await Promise.all([
+          fetch(`${apiBaseUrl}/dashboard/summary`),
+          fetch(`${apiBaseUrl}/exceptions`)
+        ]);
 
-  try {
-    const response = await fetch(`${baseUrl}/dashboard/summary`, { cache: "no-store" });
+        if (!summaryResponse.ok || !exceptionsResponse.ok) {
+          throw new Error("BrokerOps API returned an unhealthy dashboard response.");
+        }
 
-    if (!response.ok) return emptySummary;
+        const [summaryData, exceptionsData] = await Promise.all([
+          summaryResponse.json(),
+          exceptionsResponse.json()
+        ]);
 
-    const data = await response.json();
-    return data.summary || emptySummary;
-  } catch {
-    return emptySummary;
-  }
-}
+        if (!cancelled) {
+          setSummary(summaryData.summary || emptySummary);
+          setExceptions(exceptionsData.exceptions || []);
+          setStatus("ready");
+        }
+      } catch {
+        if (!cancelled) {
+          setSummary(emptySummary);
+          setExceptions([]);
+          setStatus("unavailable");
+        }
+      }
+    }
 
-function money(cents: number | null) {
-  if (cents === null) return "Unavailable";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
-}
+    void loadDashboard();
 
-function dateTime(value: string | null) {
-  if (!value) return "No imports";
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(value));
-}
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-export default async function Home() {
-  const [summary, exceptions] = await Promise.all([getSummary(), getExceptions()]);
+  const statusLabel = useMemo(() => {
+    if (status === "loading") return "Loading API";
+    if (status === "unavailable") return "API unavailable";
+    return "API connected";
+  }, [status]);
 
   return (
     <main>
@@ -86,9 +99,9 @@ export default async function Home() {
           <span className="eyebrow">BrokerOps Platform</span>
           <h1>Operations dashboard</h1>
         </div>
-        <div className="status-strip">
+        <div className={`status-strip status-${status}`}>
           <span className="status-dot" />
-          <span>Local profile</span>
+          <span>{statusLabel}</span>
         </div>
       </section>
 
@@ -111,7 +124,7 @@ export default async function Home() {
         </div>
 
         {exceptions.length === 0 ? (
-          <p className="empty-state">No exceptions returned. Seed the local database or check API health.</p>
+          <p className="empty-state">{emptyStateMessage(status)}</p>
         ) : (
           <div className="table-wrap">
             <table>
@@ -165,4 +178,23 @@ function Metric({
       <strong>{value.toLocaleString("en-US")}</strong>
     </div>
   );
+}
+
+function money(cents: number | null) {
+  if (cents === null) return "Unavailable";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+}
+
+function dateTime(value: string | null) {
+  if (!value) return "No imports";
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
+}
+
+function emptyStateMessage(status: "loading" | "ready" | "unavailable") {
+  if (status === "loading") return "Loading reconciliation queue.";
+  if (status === "unavailable") return "BrokerOps API is unavailable. Check the deployed API URL and service health.";
+  return "No reconciliation exceptions returned.";
 }

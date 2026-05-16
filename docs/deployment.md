@@ -31,6 +31,17 @@ make production-plan
 
 Production apply should happen through `.github/workflows/deploy-production.yml` with a confirmed environment and an explicit immutable `container_image` input. The workflow applies Terraform, runs the same ECS-hosted database migration task against production RDS, and waits for the ECS service to stabilize. It expects `PRODUCTION_DATABASE_PASSWORD` and `AWS_ROLE_ARN` secrets.
 
+## End-user frontend path
+
+The end-user dashboard deploys as a static Next.js export on Cloudflare Pages. It is intentionally separate from the AWS API runtime: Cloudflare serves the frontend globally, while the browser calls the deployed BrokerOps API through `NEXT_PUBLIC_API_URL`.
+
+```bash
+export NEXT_PUBLIC_API_URL=https://api.example.com
+make web-build
+```
+
+Manual deployment runs through `.github/workflows/deploy-web-cloudflare-pages.yml`. The workflow builds `apps/web/out` and uploads it with Wrangler. Required GitHub secrets are `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`; the optional repository variable `CLOUDFLARE_PAGES_PROJECT` overrides the default project name `brokerops-platform-web`.
+
 ## Release safety
 
 The ECS module creates blue and green target groups. The rollout runbook explains the expected release path and rollback steps.

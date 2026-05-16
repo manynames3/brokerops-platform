@@ -13,6 +13,7 @@ BrokerOps uses security controls that are appropriate for a production-capable S
 - provider and prompt version tracking for AI reviews
 - provider/model metadata for AI reviews
 - security group boundaries between ALB, service, database, and cache
+- Cloudflare Pages static frontend with baseline browser security headers
 - manual approval for production deployment
 
 ## AI review guardrails

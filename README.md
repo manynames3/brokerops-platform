@@ -78,6 +78,17 @@ Then open:
 - Web: http://localhost:3000
 - API health: http://localhost:8080/health
 
+## End-user frontend
+
+The end-user dashboard is a static-export Next.js app that can be deployed to Cloudflare Pages. It reads `NEXT_PUBLIC_API_URL` at build time and calls the deployed BrokerOps API from the browser.
+
+```bash
+export NEXT_PUBLIC_API_URL=https://api.example.com
+make web-build
+```
+
+The manual GitHub workflow `.github/workflows/deploy-web-cloudflare-pages.yml` publishes `apps/web/out` to Cloudflare Pages. It expects `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` secrets, plus an optional `CLOUDFLARE_PAGES_PROJECT` repository variable. The default Pages project name is `brokerops-platform-web`.
+
 ## Statement import API
 
 Local development supports JSON-wrapped CSV imports so the workflow can be exercised without cloud services:
@@ -129,4 +140,4 @@ make validate-local
 
 This runs Docker Compose configuration validation, TypeScript lint/type checks, tests, and Terraform formatting. It does not create AWS resources.
 
-The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Terraform wires the ECS task to the RDS and ElastiCache endpoints, then GitHub Actions runs a one-shot ECS migration task before hitting the preview ALB with the smoke workflow. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` values so cost-bearing deployments do not use placeholder runtime inputs.
+The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Terraform wires the ECS task to the RDS and ElastiCache endpoints, then GitHub Actions runs a one-shot ECS migration task before hitting the preview ALB with the smoke workflow. The Cloudflare Pages workflow separately deploys the static end-user frontend with `NEXT_PUBLIC_API_URL` pointing at the target API. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` values so cost-bearing deployments do not use placeholder runtime inputs.

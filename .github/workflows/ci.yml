@@ -58,6 +58,7 @@ jobs:
       - run: pnpm -r lint
       - run: pnpm -r typecheck
       - run: pnpm -r test
+      - run: NEXT_PUBLIC_API_URL=http://localhost:8080 pnpm --filter @brokerops/web build
       - run: docker build -f apps/api/Dockerfile -t brokerops-api:ci .
       - run: terraform fmt -check -recursive infra/terraform
       - run: terraform -chdir=infra/terraform/environments/preview init -backend=false

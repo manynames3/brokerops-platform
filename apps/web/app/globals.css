@@ -63,6 +63,14 @@ main {
   background: #16815f;
 }
 
+.status-loading .status-dot {
+  background: #a97816;
+}
+
+.status-unavailable .status-dot {
+  background: #b7362f;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
