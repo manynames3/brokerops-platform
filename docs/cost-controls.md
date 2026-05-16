@@ -48,6 +48,8 @@ Run `make preview-plan` first to inspect the cost-bearing resource set. Use `mak
 
 Cost-bearing Terraform commands require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` inputs. This prevents accidental preview or production applies with placeholder images or database credentials.
 
+Preview ECR images are tagged with the `preview-` prefix. `make verify-teardown` fails if preview-tagged ECR images remain, which keeps image storage from quietly accumulating after preview validation.
+
 ## Production cost posture
 
 Production is intentionally not optimized the same way as preview. It prioritizes reliability, backups, observability, and availability. Cost decisions should be evaluated through sizing, reserved capacity, traffic patterns, and operational requirements rather than by weakening core architecture controls.

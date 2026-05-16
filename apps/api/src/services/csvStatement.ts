@@ -124,7 +124,7 @@ export function normalizeStatementCsv(csv: string): {
     }
   });
 
-  if (records.length > 1 && rows.length === 0 && errors.length === 0) {
+  if (rows.length === 0 && errors.length === 0) {
     errors.push({
       rowNumber: 2,
       code: "no_data_rows",

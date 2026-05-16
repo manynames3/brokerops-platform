@@ -14,7 +14,9 @@ The platform claims needed executable behavior behind the core insurance reconci
 
 The first import API accepts CSV inside a JSON request body instead of multipart upload. That keeps local development and smoke testing simple without adding upload middleware. A later production-facing UI can add multipart or object-storage-backed ingestion without changing the normalized reconciliation model.
 
-The API Dockerfile keeps the first image build focused on the API service. A later deployment slice can split web and worker images when the preview environment needs the full multi-service runtime.
+The API Dockerfile keeps the first image build focused on the API service. CI builds that image before deploy workflows run. A later deployment slice can split web and worker images when the preview environment needs the full multi-service runtime.
+
+Preview teardown verification is intentionally strict: tagged preview resources and preview-prefixed ECR images both fail the check.
 
 ## How To Validate
 

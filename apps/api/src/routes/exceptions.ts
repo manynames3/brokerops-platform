@@ -1,8 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { query } from "../db.js";
 import { createAiReviewForException } from "../services/aiExceptionReview.js";
-
-const reviewStatuses = new Set(["open", "in_review", "resolved"]);
+import {
+  buildStatusChangeAuditMetadata,
+  isReviewStatus,
+  reviewStatuses
+} from "../services/reviewWorkflow.js";
 
 export async function registerExceptionRoutes(app: FastifyInstance) {
   app.get("/exceptions", async () => {
@@ -106,10 +109,10 @@ export async function registerExceptionRoutes(app: FastifyInstance) {
     } | undefined;
     const nextStatus = body?.status;
 
-    if (!nextStatus || !reviewStatuses.has(nextStatus)) {
+    if (!isReviewStatus(nextStatus)) {
       return reply.status(422).send({
         error: "invalid_status",
-        allowedStatuses: [...reviewStatuses]
+        allowedStatuses: reviewStatuses
       });
     }
 
@@ -145,11 +148,11 @@ export async function registerExceptionRoutes(app: FastifyInstance) {
         "exception_status_changed",
         "reconciliation_exception",
         id,
-        {
+        buildStatusChangeAuditMetadata({
           previousStatus,
           nextStatus,
-          note: body?.note?.trim() || null
-        }
+          note: body?.note
+        })
       ]
     );
 

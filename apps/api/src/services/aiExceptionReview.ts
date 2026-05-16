@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import { query } from "../db.js";
 
-type AiExceptionReview = {
+export type AiExceptionReview = {
   exceptionId: string;
   reviewStatus: "complete" | "not_enough_information";
   summary: string;
@@ -16,7 +16,7 @@ type AiExceptionReview = {
   modelMetadata: Record<string, string>;
 };
 
-type ExceptionEvidence = {
+export type ExceptionEvidence = {
   id: string;
   statement_row_id: string;
   policy_id: string | null;
@@ -105,7 +105,7 @@ export async function createAiReviewForException(exceptionId: string): Promise<A
   return review;
 }
 
-async function buildEvidenceGroundedReview(evidence: ExceptionEvidence): Promise<AiExceptionReview> {
+export async function buildEvidenceGroundedReview(evidence: ExceptionEvidence): Promise<AiExceptionReview> {
   const promptVersion = "exception-review-v1";
   const modelMetadata = {
     provider: config.aiProvider,
