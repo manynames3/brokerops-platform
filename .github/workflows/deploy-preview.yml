@@ -1,0 +1,51 @@
+name: deploy-preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: pnpm install --frozen-lockfile=false
+      - run: pnpm -r lint
+      - run: pnpm -r test
+
+      - name: Apply preview infrastructure
+        working-directory: infra/terraform/environments/preview
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Smoke test
+        run: bash scripts/smoke-test.sh
+
+      - name: Capture evidence
+        run: bash scripts/capture-evidence.sh

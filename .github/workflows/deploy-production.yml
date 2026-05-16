@@ -1,0 +1,39 @@
+name: deploy-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_environment:
+        description: "Type production to confirm"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-production:
+    if: ${{ github.event.inputs.confirm_environment == 'production' }}
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Plan production
+        working-directory: infra/terraform/environments/production
+        run: |
+          terraform init
+          terraform plan -out production.tfplan
+
+      - name: Apply production
+        working-directory: infra/terraform/environments/production
+        run: terraform apply -auto-approve production.tfplan

@@ -1,0 +1,7 @@
+external_policy_id,account_name,payment_date,premium_cents,commission_rate,commission_amount_cents
+POL-1001,Acme Manufacturing,2026-01-15,100000,0.1000,10000
+POL-1002,Cedar Logistics,2026-01-15,150000,0.0800,12000
+POL-1003,Summit Retail Group,2026-01-15,200000,0.1000,20000
+POL-9999,Unknown Account,2026-01-15,50000,0.1000,5000
+POL-1004,Harbor Foods,2026-01-15,125000,0.1000,12500
+POL-1004,Harbor Foods,2026-01-15,125000,0.1000,12500

@@ -1,0 +1,3 @@
+aws_region        = "us-east-1"
+database_password = "replace-with-secure-production-password"
+container_image   = "ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/brokerops-api:production"

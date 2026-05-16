@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: brokerops
+          POSTGRES_PASSWORD: brokerops
+          POSTGRES_DB: brokerops
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U brokerops -d brokerops"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    env:
+      LOCAL_DATABASE_URL: postgres://brokerops:brokerops@localhost:5432/brokerops
+      LOCAL_REDIS_URL: redis://localhost:6379
+      DATABASE_URL: postgres://brokerops:brokerops@localhost:5432/brokerops
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile=false
+      - run: psql "$LOCAL_DATABASE_URL" -f packages/db/migrations/001_schema.sql
+      - run: pnpm --filter @brokerops/db seed
+      - run: pnpm -r lint
+      - run: pnpm -r test

@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
+    environment:
+      POSTGRES_USER: brokerops
+      POSTGRES_PASSWORD: brokerops
+      POSTGRES_DB: brokerops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./packages/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brokerops -d brokerops"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  api:
+    image: node:20-alpine
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - pnpm-store:/root/.local/share/pnpm/store
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgres://brokerops:brokerops@postgres:5432/brokerops
+      REDIS_URL: redis://redis:6379
+      AI_PROVIDER: local
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/api dev"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    image: node:20-alpine
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - pnpm-store:/root/.local/share/pnpm/store
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://brokerops:brokerops@postgres:5432/brokerops
+      REDIS_URL: redis://redis:6379
+      AI_PROVIDER: local
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/worker dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  web:
+    image: node:20-alpine
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - pnpm-store:/root/.local/share/pnpm/store
+    environment:
+      NODE_ENV: development
+      API_INTERNAL_URL: http://api:8080
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/web dev"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres-data:
+  redis-data:
+  pnpm-store:
