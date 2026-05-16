@@ -15,6 +15,7 @@ jobs:
   preview-plan:
     runs-on: ubuntu-latest
     env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       TF_VAR_container_image: 000000000000.dkr.ecr.us-east-1.amazonaws.com/brokerops-api:preview-plan
       TF_VAR_database_password: preview-plan-only-password
     defaults:
@@ -27,10 +28,10 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
 
       - name: Configure AWS credentials
-        if: ${{ secrets.AWS_ROLE_ARN != '' }}
+        if: ${{ env.AWS_ROLE_ARN != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - run: terraform fmt -check -recursive ../..
