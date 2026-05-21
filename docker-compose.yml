@@ -37,6 +37,10 @@ services:
       DATABASE_URL: postgres://brokerops:brokerops@postgres:5432/brokerops
       REDIS_URL: redis://redis:6379
       AI_PROVIDER: local
+      API_ALLOWED_ORIGINS: http://localhost:3000
+      WEB_APP_URL: http://localhost:3000
+      WORKSPACE_API_KEY: brokerops-local-demo-key
+      WORKSPACE_NAME: BrokerOps Demo Workspace
     command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/api dev"
     ports:
       - "8080:8080"
@@ -57,6 +61,8 @@ services:
       DATABASE_URL: postgres://brokerops:brokerops@postgres:5432/brokerops
       REDIS_URL: redis://redis:6379
       AI_PROVIDER: local
+      WORKSPACE_API_KEY: brokerops-local-demo-key
+      WORKSPACE_NAME: BrokerOps Demo Workspace
     command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/worker dev"
     depends_on:
       postgres:
@@ -74,6 +80,9 @@ services:
       NODE_ENV: development
       API_INTERNAL_URL: http://api:8080
       NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_WORKSPACE_KEY: brokerops-local-demo-key
+      NEXT_PUBLIC_WORKSPACE_NAME: BrokerOps Demo Workspace
+      NEXT_PUBLIC_REQUEST_ACCESS_URL: "#pilot"
     command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/web dev"
     ports:
       - "3000:3000"

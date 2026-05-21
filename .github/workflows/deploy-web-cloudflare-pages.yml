@@ -10,6 +10,18 @@ on:
         description: "Cloudflare Pages deployment branch"
         required: false
         default: "main"
+      request_access_url:
+        description: "Paid-pilot request access URL for the frontend CTA"
+        required: false
+        default: "#pilot"
+      workspace_key:
+        description: "BrokerOps workspace key that matches the deployed API"
+        required: false
+        default: "brokerops-local-demo-key"
+      workspace_name:
+        description: "Display name for the BrokerOps workspace"
+        required: false
+        default: "BrokerOps Demo Workspace"
 
 permissions:
   contents: read
@@ -22,6 +34,9 @@ jobs:
     env:
       CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'brokerops-platform-web' }}
       NEXT_PUBLIC_API_URL: ${{ github.event.inputs.api_url }}
+      NEXT_PUBLIC_REQUEST_ACCESS_URL: ${{ github.event.inputs.request_access_url }}
+      NEXT_PUBLIC_WORKSPACE_KEY: ${{ github.event.inputs.workspace_key }}
+      NEXT_PUBLIC_WORKSPACE_NAME: ${{ github.event.inputs.workspace_name }}
 
     steps:
       - uses: actions/checkout@v4

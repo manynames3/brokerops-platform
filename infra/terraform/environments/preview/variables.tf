@@ -21,3 +21,32 @@ variable "container_image" {
     error_message = "container_image must be an explicit API image URI."
   }
 }
+
+variable "api_allowed_origins" {
+  type        = list(string)
+  description = "Browser origins allowed to call the BrokerOps API."
+  default     = ["https://brokerops-platform-web.pages.dev"]
+}
+
+variable "web_app_url" {
+  type        = string
+  description = "Public BrokerOps web app URL returned from the API root endpoint."
+  default     = "https://brokerops-platform-web.pages.dev"
+}
+
+variable "workspace_api_key" {
+  type        = string
+  description = "Workspace key required by operational BrokerOps API routes."
+  sensitive   = true
+
+  validation {
+    condition     = length(var.workspace_api_key) >= 16
+    error_message = "workspace_api_key must be at least 16 characters."
+  }
+}
+
+variable "workspace_name" {
+  type        = string
+  description = "Display name for the preview BrokerOps workspace."
+  default     = "BrokerOps Preview Workspace"
+}

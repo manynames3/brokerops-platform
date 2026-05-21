@@ -26,7 +26,7 @@ docker-build-api:
 	docker build -f apps/api/Dockerfile -t brokerops-api:local .
 
 web-build:
-	NEXT_PUBLIC_API_URL=$${NEXT_PUBLIC_API_URL:-http://localhost:8080} $(PNPM) --filter @brokerops/web build
+	NEXT_PUBLIC_API_URL=$${NEXT_PUBLIC_API_URL:-http://localhost:8080} NEXT_PUBLIC_WORKSPACE_KEY=$${NEXT_PUBLIC_WORKSPACE_KEY:-brokerops-local-demo-key} NEXT_PUBLIC_WORKSPACE_NAME="$${NEXT_PUBLIC_WORKSPACE_NAME:-BrokerOps Demo Workspace}" $(PNPM) --filter @brokerops/web build
 
 test:
 	$(PNPM) install
@@ -50,10 +50,10 @@ terraform-validate:
 validate-local: docker-config lint typecheck test docker-build-api terraform-fmt
 
 preview-plan:
-	cd infra/terraform/environments/preview && terraform init && terraform plan -out preview.tfplan -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for preview planning}"
+	cd infra/terraform/environments/preview && terraform init && terraform plan -out preview.tfplan -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for preview planning}" -var "workspace_api_key=$${WORKSPACE_API_KEY:?Set WORKSPACE_API_KEY for preview planning}"
 
 preview-up:
-	cd infra/terraform/environments/preview && terraform init && terraform apply -auto-approve -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for preview apply}"
+	cd infra/terraform/environments/preview && terraform init && terraform apply -auto-approve -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for preview apply}" -var "workspace_api_key=$${WORKSPACE_API_KEY:?Set WORKSPACE_API_KEY for preview apply}"
 	$(MAKE) preview-migrate
 
 preview-migrate:
@@ -65,13 +65,13 @@ preview-migrate:
 	bash scripts/run-ecs-migration.sh
 
 preview-smoke:
-	API_URL=http://$$(terraform -chdir=infra/terraform/environments/preview output -raw alb_dns_name) bash scripts/smoke-test.sh
+	API_URL=http://$$(terraform -chdir=infra/terraform/environments/preview output -raw alb_dns_name) WORKSPACE_API_KEY=$${WORKSPACE_API_KEY:?Set WORKSPACE_API_KEY for preview smoke testing} bash scripts/smoke-test.sh
 
 preview-down:
 	cd infra/terraform/environments/preview && terraform destroy -auto-approve
 
 production-plan:
-	cd infra/terraform/environments/production && terraform init && terraform plan -out production.tfplan -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for production planning}"
+	cd infra/terraform/environments/production && terraform init && terraform plan -out production.tfplan -var "container_image=$${CONTAINER_IMAGE:?Set CONTAINER_IMAGE to an API image URI}" -var "database_password=$${DATABASE_PASSWORD:?Set DATABASE_PASSWORD for production planning}" -var "workspace_api_key=$${WORKSPACE_API_KEY:?Set WORKSPACE_API_KEY for production planning}"
 
 production-migrate:
 	export ECS_CLUSTER_NAME="$$(terraform -chdir=infra/terraform/environments/production output -raw ecs_cluster_name)" && \

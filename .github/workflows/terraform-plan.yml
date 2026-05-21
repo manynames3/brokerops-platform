@@ -18,6 +18,7 @@ jobs:
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       TF_VAR_container_image: 000000000000.dkr.ecr.us-east-1.amazonaws.com/brokerops-api:preview-plan
       TF_VAR_database_password: preview-plan-only-password
+      TF_VAR_workspace_api_key: preview-plan-workspace-key
     defaults:
       run:
         working-directory: infra/terraform/environments/preview

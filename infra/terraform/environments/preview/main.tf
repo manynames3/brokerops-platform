@@ -53,10 +53,14 @@ module "ecs_service" {
   assign_public_ip          = true
   service_security_group_id = aws_security_group.service.id
   environment = {
-    NODE_ENV     = "preview"
-    AI_PROVIDER  = "local"
-    DATABASE_URL = local.database_url
-    REDIS_URL    = local.redis_url
+    NODE_ENV            = "preview"
+    AI_PROVIDER         = "local"
+    DATABASE_URL        = local.database_url
+    REDIS_URL           = local.redis_url
+    API_ALLOWED_ORIGINS = join(",", var.api_allowed_origins)
+    WEB_APP_URL         = var.web_app_url
+    WORKSPACE_API_KEY   = var.workspace_api_key
+    WORKSPACE_NAME      = var.workspace_name
   }
   tags = local.tags
 }

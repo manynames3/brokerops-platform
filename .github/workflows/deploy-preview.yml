@@ -69,6 +69,7 @@ jobs:
         env:
           TF_VAR_container_image: ${{ env.IMAGE_URI }}
           TF_VAR_database_password: ${{ secrets.PREVIEW_DATABASE_PASSWORD }}
+          TF_VAR_workspace_api_key: ${{ secrets.PREVIEW_WORKSPACE_API_KEY }}
         run: |
           terraform init
           terraform apply -auto-approve
@@ -89,6 +90,8 @@ jobs:
             --services "$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_service_name)"
 
       - name: Smoke test
+        env:
+          WORKSPACE_API_KEY: ${{ secrets.PREVIEW_WORKSPACE_API_KEY }}
         run: |
           API_URL="http://$(terraform -chdir=infra/terraform/environments/preview output -raw alb_dns_name)" bash scripts/smoke-test.sh
 

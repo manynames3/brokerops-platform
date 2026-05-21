@@ -38,6 +38,7 @@ jobs:
         env:
           TF_VAR_container_image: ${{ github.event.inputs.container_image }}
           TF_VAR_database_password: ${{ secrets.PRODUCTION_DATABASE_PASSWORD }}
+          TF_VAR_workspace_api_key: ${{ secrets.PRODUCTION_WORKSPACE_API_KEY }}
         run: |
           terraform init
           terraform plan -out production.tfplan
@@ -47,6 +48,7 @@ jobs:
         env:
           TF_VAR_container_image: ${{ github.event.inputs.container_image }}
           TF_VAR_database_password: ${{ secrets.PRODUCTION_DATABASE_PASSWORD }}
+          TF_VAR_workspace_api_key: ${{ secrets.PRODUCTION_WORKSPACE_API_KEY }}
         run: terraform apply -auto-approve production.tfplan
 
       - name: Run production database migrations

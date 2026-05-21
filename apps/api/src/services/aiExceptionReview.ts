@@ -32,7 +32,10 @@ export type ExceptionEvidence = {
   source_row_number: number;
 };
 
-export async function createAiReviewForException(exceptionId: string): Promise<AiExceptionReview | null> {
+export async function createAiReviewForException(
+  exceptionId: string,
+  organizationId: string
+): Promise<AiExceptionReview | null> {
   const evidenceResult = await query<ExceptionEvidence>(
     `
     SELECT
@@ -51,10 +54,13 @@ export async function createAiReviewForException(exceptionId: string): Promise<A
       sr.source_row_number
     FROM reconciliation_exceptions re
     JOIN statement_rows sr ON sr.id = re.statement_row_id
+    JOIN statement_files sf ON sf.id = sr.statement_file_id
+    JOIN carriers c ON c.id = sf.carrier_id
     LEFT JOIN policies p ON p.id = re.policy_id
     WHERE re.id = $1
+      AND c.organization_id = $2
     `,
-    [exceptionId]
+    [exceptionId, organizationId]
   );
 
   const evidence = evidenceResult.rows[0];

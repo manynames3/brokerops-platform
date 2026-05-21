@@ -6,15 +6,40 @@ import { registerHealthRoutes } from "./routes/health.js";
 import { registerStatementRoutes } from "./routes/statements.js";
 import { registerExceptionRoutes } from "./routes/exceptions.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
+import { registerPolicyRoutes } from "./routes/policies.js";
+import { workspaceHeaderName } from "./workspace.js";
 
 initializeTelemetry();
 
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: true });
+await app.register(cors, {
+  origin: config.corsOrigins,
+  allowedHeaders: ["content-type", workspaceHeaderName],
+  methods: ["GET", "POST", "PATCH", "OPTIONS"]
+});
+
+app.get("/", async () => ({
+  service: "brokerops-api",
+  product: "BrokerOps Platform",
+  purpose: "Insurance carrier statement reconciliation API",
+  webAppUrl: config.webAppUrl,
+  healthUrl: "/health",
+  workspaceHeader: workspaceHeaderName,
+  workspaceRequiredForOperationalRoutes: true,
+  workflow: [
+    "POST /policies/import",
+    "POST /statements/import",
+    "GET /exceptions",
+    "GET /exceptions/report.csv",
+    "POST /exceptions/:id/ai-review",
+    "PATCH /exceptions/:id/review"
+  ]
+}));
 
 await registerHealthRoutes(app);
 await registerDashboardRoutes(app);
+await registerPolicyRoutes(app);
 await registerStatementRoutes(app);
 await registerExceptionRoutes(app);
 

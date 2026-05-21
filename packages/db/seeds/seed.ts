@@ -14,11 +14,21 @@ async function main() {
 
   try {
     await client.query("BEGIN");
-    await client.query("TRUNCATE ai_reviews, audit_events, reconciliation_exceptions, statement_rows, statement_files, policies, carriers RESTART IDENTITY CASCADE");
+    await client.query("TRUNCATE ai_reviews, audit_events, reconciliation_exceptions, statement_rows, statement_files, policies, carriers, organizations RESTART IDENTITY CASCADE");
+
+    const organization = await client.query<{ id: string }>(
+      `
+      INSERT INTO organizations (name, workspace_key)
+      VALUES ($1, $2)
+      RETURNING id
+      `,
+      ["BrokerOps Demo Workspace", process.env.WORKSPACE_API_KEY || "brokerops-local-demo-key"]
+    );
+    const organizationId = organization.rows[0].id;
 
     const carrier = await client.query<{ id: string }>(
-      "INSERT INTO carriers (name) VALUES ($1) RETURNING id",
-      ["Northstar Mutual"]
+      "INSERT INTO carriers (organization_id, name) VALUES ($1, $2) RETURNING id",
+      [organizationId, "Northstar Mutual"]
     );
     const carrierId = carrier.rows[0].id;
 
@@ -31,8 +41,8 @@ async function main() {
 
     for (const [externalPolicyId, accountName, rate, effectiveDate] of policies) {
       await client.query(
-        "INSERT INTO policies (external_policy_id, account_name, carrier_id, expected_commission_rate, effective_date) VALUES ($1, $2, $3, $4, $5)",
-        [externalPolicyId, accountName, carrierId, rate, effectiveDate]
+        "INSERT INTO policies (organization_id, external_policy_id, account_name, carrier_id, expected_commission_rate, effective_date) VALUES ($1, $2, $3, $4, $5, $6)",
+        [organizationId, externalPolicyId, accountName, carrierId, rate, effectiveDate]
       );
     }
 

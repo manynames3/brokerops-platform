@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const apiUrl = (process.env.API_URL || "http://localhost:8080").replace(/\/$/, "");
+const workspaceApiKey = process.env.WORKSPACE_API_KEY || "brokerops-local-demo-key";
 const runId = process.env.SMOKE_RUN_ID || `${Date.now()}`;
 const externalPolicyId = `SMOKE-${runId}`;
 const fileName = `smoke-${runId}.csv`;
@@ -12,6 +13,20 @@ async function main() {
 
   const initialSummary = await request("GET", "/dashboard/summary");
   assertType(initialSummary.summary, "object", "dashboard summary");
+
+  const policyCsv = [
+    "external_policy_id,account_name,expected_commission_rate,effective_date",
+    `${externalPolicyId},Smoke Test Account,12%,2025-01-01`
+  ].join("\n");
+
+  const importedPolicies = await request("POST", "/policies/import", {
+    carrierName: "Smoke Test Carrier",
+    actor: "smoke-test",
+    csv: policyCsv
+  }, 201);
+
+  assertEqual(importedPolicies.ok, true, "policy import ok");
+  assertEqual(importedPolicies.importedPolicies, 1, "imported policy count");
 
   const csv = [
     "external_policy_id,account_name,payment_date,premium_cents,commission_rate,commission_amount_cents",
@@ -73,7 +88,10 @@ async function main() {
 async function request(method, path, body, expectedStatus = 200) {
   const response = await fetch(`${apiUrl}${path}`, {
     method,
-    headers: body ? { "content-type": "application/json" } : undefined,
+    headers: {
+      "x-brokerops-workspace-key": workspaceApiKey,
+      ...(body ? { "content-type": "application/json" } : {})
+    },
     body: body ? JSON.stringify(body) : undefined
   });
 
