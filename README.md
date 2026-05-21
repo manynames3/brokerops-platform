@@ -7,7 +7,7 @@ BrokerOps Platform is a production-capable insurance back-office reconciliation 
 
 The system models carrier statement ingestion, transaction normalization, reconciliation exceptions, audit history, AI-assisted review, and operational dashboards.
 
-BrokerOps uses environment-aware architecture: local development runs the full application stack through Docker Compose, preview environments validate the AWS deployment path with cost-conscious defaults, and the production profile supports an always-on ECS/RDS/ElastiCache deployment.
+BrokerOps uses environment-aware architecture: local development runs the full application stack through Docker Compose, hosted demos can use Neon Postgres for low-idle-cost persistence, preview environments validate the AWS deployment path with cost-conscious defaults, and the production profile supports an always-on ECS/RDS/ElastiCache deployment.
 
 ## Live links
 
@@ -15,6 +15,7 @@ BrokerOps uses environment-aware architecture: local development runs the full a
 - Repository: [github.com/manynames3/brokerops-platform](https://github.com/manynames3/brokerops-platform)
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - Deployment path: [docs/deployment.md](docs/deployment.md)
+- Database strategy: [docs/database-strategy.md](docs/database-strategy.md)
 - Cost controls: [docs/cost-controls.md](docs/cost-controls.md)
 - Security boundary: [docs/security.md](docs/security.md)
 - Paid pilot plan: [docs/paid-pilot.md](docs/paid-pilot.md)
@@ -70,7 +71,7 @@ Full self-serve billing, customer administration, and carrier templates are stil
 - Worker: Node.js, TypeScript
 - Data: PostgreSQL, Redis-compatible cache
 - Cloud runtime: ECS
-- Database: RDS PostgreSQL
+- Database: PostgreSQL with Neon for hosted demos and RDS PostgreSQL for production AWS deployments
 - Cache: ElastiCache-compatible profile
 - Infrastructure: Terraform
 - CI/CD: GitHub Actions with AWS OIDC
@@ -100,6 +101,19 @@ make preview-down
 ```
 
 `make preview-up` applies the preview profile and runs the database migration task inside ECS before smoke testing. `make preview-smoke` resolves the preview ALB DNS name from Terraform output, so validation targets the deployed service instead of a local process. Preview environments are intentionally short-lived. This is not because the system is incomplete. It is because non-production infrastructure should not create unnecessary idle cost.
+
+### Hosted demo database
+
+Use Neon Postgres when the goal is a low-idle-cost online demo rather than a full AWS infrastructure validation run:
+
+```bash
+export NODE_ENV=demo
+export DATABASE_URL='postgresql://USER:PASSWORD@EP-NAME-pooler.REGION.aws.neon.tech/neondb?sslmode=require'
+export MIGRATION_DATABASE_URL='postgresql://USER:PASSWORD@EP-NAME.REGION.aws.neon.tech/neondb?sslmode=require'
+pnpm --filter @brokerops/api migrate
+```
+
+The runtime `DATABASE_URL` can use Neon's pooled hostname for hosted web traffic. `MIGRATION_DATABASE_URL` should use the direct Neon hostname for schema migrations. See [docs/database-strategy.md](docs/database-strategy.md) for the Neon demo path and the RDS production path.
 
 ### Production profile
 
@@ -262,7 +276,7 @@ make validate-local
 
 This runs Docker Compose configuration validation, TypeScript lint/type checks, tests, and Terraform formatting. It does not create AWS resources.
 
-The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Terraform wires the ECS task to the RDS and ElastiCache endpoints, then GitHub Actions runs a one-shot ECS migration task before hitting the preview ALB with the smoke workflow. The Cloudflare Pages workflow separately deploys the static end-user frontend with `NEXT_PUBLIC_API_URL` pointing at the target API. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE`, `DATABASE_PASSWORD`, `WORKSPACE_API_KEY`, `AUTH_TOKEN_SECRET`, and `AUTH_ADMIN_PASSWORD` values so cost-bearing deployments do not use placeholder runtime inputs.
+The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Terraform wires the ECS task to the RDS and ElastiCache endpoints, then GitHub Actions runs a one-shot ECS migration task before hitting the preview ALB with the smoke workflow. The Cloudflare Pages workflow separately deploys the static end-user frontend with `NEXT_PUBLIC_API_URL` pointing at the target API. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE`, `DATABASE_PASSWORD`, `WORKSPACE_API_KEY`, `AUTH_TOKEN_SECRET`, and `AUTH_ADMIN_PASSWORD` values so cost-bearing deployments do not use placeholder runtime inputs. Hosted demo deployments can use Neon by setting `DATABASE_URL` and `MIGRATION_DATABASE_URL`; the AWS production profile remains RDS-backed.
 
 ## Monetization direction
 

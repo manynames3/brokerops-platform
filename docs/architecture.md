@@ -19,7 +19,7 @@ BrokerOps Platform separates product workflow concerns from platform concerns.
 - repeatable infrastructure through Terraform
 - local developer experience through Docker Compose
 - service deployment through ECS
-- database persistence through RDS PostgreSQL
+- database persistence through Neon Postgres for hosted demos and RDS PostgreSQL for production AWS deployments
 - cache path through Redis-compatible infrastructure
 - release safety through blue-green target groups and smoke tests
 - observability through logs, metrics, alarms, and PostgreSQL query analysis
@@ -50,6 +50,16 @@ GitHub Actions
   -> ElastiCache-compatible cache
   -> CloudWatch
 ```
+
+Hosted demo database profile:
+
+```text
+API runtime
+  -> Neon Postgres through DATABASE_URL
+  -> Direct Neon URL for migrations through MIGRATION_DATABASE_URL
+```
+
+The hosted demo profile keeps a public product walkthrough online with lower idle database cost. It does not replace the AWS production profile.
 
 ## Data model
 

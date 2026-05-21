@@ -1,6 +1,42 @@
 # Deployment
 
-BrokerOps supports local development, preview validation, and production deployment profiles.
+BrokerOps supports local development, low-idle-cost hosted demos, preview validation, and production deployment profiles.
+
+## Hosted demo path with Neon
+
+Use this path when the goal is a public online demo that can stay live cheaply without running RDS all month. Neon is the preferred database for hosted demos because it provides managed Postgres with low or zero idle cost for intermittent traffic. RDS remains the production AWS target.
+
+1. Create a Neon project and database.
+2. Copy both connection strings from the Neon console:
+   - pooled runtime URL with `-pooler` in the hostname
+   - direct URL without `-pooler` for migrations
+3. Ensure both URLs include `sslmode=require`.
+4. Configure the API runtime:
+
+```bash
+export NODE_ENV=demo
+export DATABASE_URL='postgresql://USER:PASSWORD@EP-NAME-pooler.REGION.aws.neon.tech/neondb?sslmode=require'
+export MIGRATION_DATABASE_URL='postgresql://USER:PASSWORD@EP-NAME.REGION.aws.neon.tech/neondb?sslmode=require'
+export REDIS_URL='redis://example-cache:6379'
+export API_ALLOWED_ORIGINS='https://brokerops-platform-web.pages.dev'
+export WEB_APP_URL='https://brokerops-platform-web.pages.dev'
+export WORKSPACE_API_KEY='replace-with-demo-automation-fallback-key'
+export WORKSPACE_NAME='BrokerOps Demo Workspace'
+export AUTH_TOKEN_SECRET='replace-with-demo-auth-token-secret'
+export AUTH_ADMIN_EMAIL='ops@example.com'
+export AUTH_ADMIN_PASSWORD='replace-with-demo-admin-password'
+```
+
+Run migrations before exposing the demo API:
+
+```bash
+pnpm install
+pnpm --filter @brokerops/api migrate
+```
+
+Then deploy the API on the chosen demo runtime with the same environment variables and build the Cloudflare Pages frontend with `NEXT_PUBLIC_API_URL` pointing at that API. Do not commit Neon credentials. Rotate demo credentials after public walkthroughs or paid-pilot trials.
+
+For details, see [database-strategy.md](database-strategy.md).
 
 ## Preview path
 
@@ -40,6 +76,8 @@ make production-plan
 ```
 
 Production apply should happen through `.github/workflows/deploy-production.yml` with a confirmed environment and an explicit immutable `container_image` input. The workflow applies Terraform, runs the same ECS-hosted database migration task against production RDS, and waits for the ECS service to stabilize. It expects `PRODUCTION_DATABASE_PASSWORD`, `PRODUCTION_WORKSPACE_API_KEY`, `PRODUCTION_AUTH_TOKEN_SECRET`, `PRODUCTION_AUTH_ADMIN_PASSWORD`, `PRODUCTION_AUTH_ADMIN_EMAIL`, and `AWS_ROLE_ARN` configuration.
+
+Neon is not used by the production Terraform profile. Production remains RDS-backed for AWS-native networking, backups, operational controls, and predictable always-on workloads.
 
 ## End-user frontend path
 

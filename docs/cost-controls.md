@@ -2,11 +2,12 @@
 
 Cost control is a platform requirement.
 
-BrokerOps separates production capability from non-production operating cost. The preview profile uses the same core architecture path with smaller settings, TTL tags, and teardown verification.
+BrokerOps separates production capability from non-production operating cost. Hosted demos can use Neon Postgres for intermittent public traffic, while the preview profile uses the same core AWS architecture path with smaller settings, TTL tags, and teardown verification.
 
 ## Cost-aware decisions
 
 - Local development runs without cloud infrastructure.
+- Hosted demos can use Neon Postgres to avoid always-on RDS idle cost.
 - Preview environments are short-lived.
 - Preview resources include TTL and ownership tags.
 - Production profile is separate from preview profile.

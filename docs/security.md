@@ -25,7 +25,7 @@ The current end-user UI is suitable for local and controlled pilot workflows. Op
 
 The product is not ready for broad paid customer use until customer administration, invite/recovery flows, production-grade role management, data retention controls, and customer data handling policies are added.
 
-Preview and production API runtimes must receive explicit `DATABASE_URL`, `REDIS_URL`, `API_ALLOWED_ORIGINS`, `WORKSPACE_API_KEY`, `AUTH_TOKEN_SECRET`, and `AUTH_ADMIN_PASSWORD` values. The API intentionally does not fall back to localhost database, cache, workspace, or auth defaults in cloud profiles.
+Demo, preview, and production API runtimes must receive explicit `DATABASE_URL`, `REDIS_URL`, `API_ALLOWED_ORIGINS`, `WORKSPACE_API_KEY`, `AUTH_TOKEN_SECRET`, and `AUTH_ADMIN_PASSWORD` values. The API intentionally does not fall back to localhost database, cache, workspace, or auth defaults in cloud profiles. Neon-backed demos must use `sslmode=require` or `sslmode=verify-full` in `DATABASE_URL` and `MIGRATION_DATABASE_URL`.
 
 The API root endpoint returns service metadata and the configured `WEB_APP_URL`. Do not put secrets, internal hostnames, or customer-specific details in that value.
 

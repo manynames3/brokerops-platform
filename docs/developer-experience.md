@@ -21,6 +21,7 @@ The local path should give an engineer a working web app, API, worker, PostgreSQ
 - fast API feedback
 - simple smoke checks
 - no cloud dependency for routine development
+- low-idle-cost Neon database path for hosted demos
 - clear documentation for environment variables
 - local policy import path for expected commission records
 - local CSV import path for reconciliation workflow testing
@@ -52,6 +53,8 @@ make preview-smoke
 Preview smoke tests resolve the ALB DNS name from Terraform output. `scripts/smoke-test.sh` requires an explicit `API_URL`, signs in with `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD`, and exercises authenticated operational routes.
 
 `make web-build` creates the static Next.js export for Cloudflare Pages. Set `NEXT_PUBLIC_API_URL` to the target API URL and `NEXT_PUBLIC_DEMO_EMAIL` to the operator email shown in the sign-in form when building for preview or production.
+
+For hosted demos, set `NODE_ENV=demo`, point `DATABASE_URL` at the Neon runtime connection string, and point `MIGRATION_DATABASE_URL` at the direct Neon connection string before running `pnpm --filter @brokerops/api migrate`.
 
 Set `NEXT_PUBLIC_REQUEST_ACCESS_URL` to a monitored paid-pilot form or inbox when building a public demo. If it is not configured, the frontend CTA stays on-page and scrolls to the pilot section.
 
