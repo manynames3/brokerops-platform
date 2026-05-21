@@ -1,17 +1,50 @@
 #!/usr/bin/env node
 
 const apiUrl = (process.env.API_URL || "http://localhost:8080").replace(/\/$/, "");
+const authEmail = process.env.AUTH_ADMIN_EMAIL || "ops@brokerops.local";
+const authPassword = process.env.AUTH_ADMIN_PASSWORD || "brokerops-demo-password";
 const runId = process.env.SMOKE_RUN_ID || `${Date.now()}`;
 const externalPolicyId = `SMOKE-${runId}`;
 const fileName = `smoke-${runId}.csv`;
+let authToken = "";
 
 async function main() {
   const health = await request("GET", "/health");
   assertEqual(health.status, "ok", "health status");
   assertEqual(health.database, "ok", "database status");
 
+  const rejectedDashboard = await request("GET", "/dashboard/summary", undefined, 401);
+  assertEqual(rejectedDashboard.error, "authentication_required", "unauthenticated dashboard rejection");
+
+  const rejectedLogin = await request("POST", "/auth/login", {
+    email: authEmail,
+    password: "not-the-password"
+  }, 401);
+  assertEqual(rejectedLogin.error, "invalid_credentials", "invalid login rejection");
+
+  const login = await request("POST", "/auth/login", {
+    email: authEmail,
+    password: authPassword
+  });
+  assertType(login.token, "string", "auth token");
+  authToken = login.token;
+
   const initialSummary = await request("GET", "/dashboard/summary");
   assertType(initialSummary.summary, "object", "dashboard summary");
+
+  const policyCsv = [
+    "external_policy_id,account_name,expected_commission_rate,effective_date",
+    `${externalPolicyId},Smoke Test Account,12%,2025-01-01`
+  ].join("\n");
+
+  const importedPolicies = await request("POST", "/policies/import", {
+    carrierName: "Smoke Test Carrier",
+    actor: "smoke-test",
+    csv: policyCsv
+  }, 201);
+
+  assertEqual(importedPolicies.ok, true, "policy import ok");
+  assertEqual(importedPolicies.importedPolicies, 1, "imported policy count");
 
   const csv = [
     "external_policy_id,account_name,payment_date,premium_cents,commission_rate,commission_amount_cents",
@@ -73,7 +106,10 @@ async function main() {
 async function request(method, path, body, expectedStatus = 200) {
   const response = await fetch(`${apiUrl}${path}`, {
     method,
-    headers: body ? { "content-type": "application/json" } : undefined,
+    headers: {
+      ...(authToken ? { authorization: `Bearer ${authToken}` } : {}),
+      ...(body ? { "content-type": "application/json" } : {})
+    },
     body: body ? JSON.stringify(body) : undefined
   });
 

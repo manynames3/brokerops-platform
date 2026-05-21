@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
-import { config } from "./config.js";
+import { resolveDatabaseUrl } from "./databaseUrl.js";
 
 const { Pool } = pg;
 
@@ -11,7 +11,7 @@ const repoRoot = path.resolve(moduleDir, "../../..");
 const migrationsDir = process.env.MIGRATIONS_DIR || path.join(repoRoot, "packages/db/migrations");
 
 const pool = new Pool({
-  connectionString: config.databaseUrl,
+  connectionString: resolveDatabaseUrl(process.env, { migration: true }),
   max: 1,
   connectionTimeoutMillis: 5_000
 });

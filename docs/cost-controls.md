@@ -2,11 +2,12 @@
 
 Cost control is a platform requirement.
 
-BrokerOps separates production capability from non-production operating cost. The preview profile uses the same core architecture path with smaller settings, TTL tags, and teardown verification.
+BrokerOps separates production capability from non-production operating cost. Hosted demos can use Neon Postgres for intermittent public traffic, while the preview profile uses the same core AWS architecture path with smaller settings, TTL tags, and teardown verification.
 
 ## Cost-aware decisions
 
 - Local development runs without cloud infrastructure.
+- Hosted demos can use Neon Postgres to avoid always-on RDS idle cost.
 - Preview environments are short-lived.
 - Preview resources include TTL and ownership tags.
 - Production profile is separate from preview profile.
@@ -46,7 +47,7 @@ make preview-up
 
 Run `make preview-plan` first to inspect the cost-bearing resource set. Use `make preview-down` and `make verify-teardown` after preview validation.
 
-Cost-bearing Terraform commands require explicit `CONTAINER_IMAGE` and `DATABASE_PASSWORD` inputs. This prevents accidental preview or production applies with placeholder images or database credentials.
+Cost-bearing Terraform commands require explicit `CONTAINER_IMAGE`, `DATABASE_PASSWORD`, `WORKSPACE_API_KEY`, `AUTH_TOKEN_SECRET`, and `AUTH_ADMIN_PASSWORD` inputs. This prevents accidental preview or production applies with placeholder images, database credentials, or unscoped workspace access.
 
 Preview ECR images are tagged with the `preview-` prefix. `make verify-teardown` fails if preview-tagged ECR images remain, which keeps image storage from quietly accumulating after preview validation.
 

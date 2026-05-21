@@ -18,6 +18,10 @@ jobs:
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       TF_VAR_container_image: 000000000000.dkr.ecr.us-east-1.amazonaws.com/brokerops-api:preview-plan
       TF_VAR_database_password: preview-plan-only-password
+      TF_VAR_workspace_api_key: preview-plan-workspace-key
+      TF_VAR_auth_token_secret: preview-plan-auth-token-secret-000000
+      TF_VAR_auth_admin_email: ops@brokerops.local
+      TF_VAR_auth_admin_password: preview-plan-admin-password
     defaults:
       run:
         working-directory: infra/terraform/environments/preview
@@ -35,6 +39,15 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - run: terraform fmt -check -recursive ../..
-      - run: terraform init
+      - run: terraform init -backend=false
       - run: terraform validate
-      - run: terraform plan -out preview.tfplan
+
+      - name: Run preview plan with AWS credentials
+        if: ${{ env.AWS_ROLE_ARN != '' }}
+        run: terraform plan -out preview.tfplan
+
+      - name: Skip preview plan without AWS credentials
+        if: ${{ env.AWS_ROLE_ARN == '' }}
+        run: |
+          echo "AWS_ROLE_ARN is not configured for this repository."
+          echo "Validated Terraform syntax and provider wiring without creating or planning AWS resources."

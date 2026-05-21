@@ -8,6 +8,7 @@ import {
 } from "./reconciliation.js";
 
 export type StatementImportRequest = {
+  organizationId: string;
   carrierName: string;
   fileName: string;
   csv: string;
@@ -53,12 +54,12 @@ export async function importStatementCsv(input: StatementImportRequest): Promise
 
     const carrier = await client.query<{ id: string }>(
       `
-      INSERT INTO carriers (name)
-      VALUES ($1)
-      ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+      INSERT INTO carriers (organization_id, name)
+      VALUES ($1, $2)
+      ON CONFLICT (organization_id, name) DO UPDATE SET name = EXCLUDED.name
       RETURNING id
       `,
-      [input.carrierName.trim()]
+      [input.organizationId, input.carrierName.trim()]
     );
     const carrierId = carrier.rows[0].id;
 
@@ -97,7 +98,7 @@ export async function importStatementCsv(input: StatementImportRequest): Promise
       rowIdsBySourceRow.set(row.sourceRowNumber, inserted.rows[0].id);
     }
 
-    const policies = await loadPoliciesForRows(normalized.rows, client);
+    const policies = await loadPoliciesForRows(normalized.rows, client, input.organizationId);
     const findings = reconcileStatementRows(normalized.rows, policies);
     const exceptions: Array<ReconciliationFinding & { id: string }> = [];
 
@@ -188,6 +189,15 @@ export async function importStatementCsv(input: StatementImportRequest): Promise
 function validateImportRequest(input: StatementImportRequest): StatementValidationError[] {
   const errors: StatementValidationError[] = [];
 
+  if (!input.organizationId?.trim()) {
+    errors.push({
+      rowNumber: 0,
+      field: "organizationId",
+      code: "required_field",
+      message: "organizationId is required."
+    });
+  }
+
   if (!input.carrierName?.trim()) {
     errors.push({
       rowNumber: 0,
@@ -220,16 +230,18 @@ function validateImportRequest(input: StatementImportRequest): StatementValidati
 
 async function loadPoliciesForRows(
   rows: NormalizedStatementRow[],
-  client: Pick<typeof pool, "query">
+  client: Pick<typeof pool, "query">,
+  organizationId: string
 ): Promise<PolicySnapshot[]> {
   const externalPolicyIds = [...new Set(rows.map((row) => row.externalPolicyId))];
   const result = await client.query<PolicyRecord>(
     `
     SELECT id, external_policy_id, account_name, expected_commission_rate
     FROM policies
-    WHERE external_policy_id = ANY($1::text[])
+    WHERE organization_id = $1
+      AND external_policy_id = ANY($2::text[])
     `,
-    [externalPolicyIds]
+    [organizationId, externalPolicyIds]
   );
 
   return result.rows.map((policy) => ({

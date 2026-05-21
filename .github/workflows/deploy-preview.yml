@@ -69,6 +69,10 @@ jobs:
         env:
           TF_VAR_container_image: ${{ env.IMAGE_URI }}
           TF_VAR_database_password: ${{ secrets.PREVIEW_DATABASE_PASSWORD }}
+          TF_VAR_workspace_api_key: ${{ secrets.PREVIEW_WORKSPACE_API_KEY }}
+          TF_VAR_auth_token_secret: ${{ secrets.PREVIEW_AUTH_TOKEN_SECRET }}
+          TF_VAR_auth_admin_email: ${{ vars.PREVIEW_AUTH_ADMIN_EMAIL || 'ops@brokerops.local' }}
+          TF_VAR_auth_admin_password: ${{ secrets.PREVIEW_AUTH_ADMIN_PASSWORD }}
         run: |
           terraform init
           terraform apply -auto-approve
@@ -89,6 +93,9 @@ jobs:
             --services "$(terraform -chdir=infra/terraform/environments/preview output -raw ecs_service_name)"
 
       - name: Smoke test
+        env:
+          AUTH_ADMIN_EMAIL: ${{ vars.PREVIEW_AUTH_ADMIN_EMAIL || 'ops@brokerops.local' }}
+          AUTH_ADMIN_PASSWORD: ${{ secrets.PREVIEW_AUTH_ADMIN_PASSWORD }}
         run: |
           API_URL="http://$(terraform -chdir=infra/terraform/environments/preview output -raw alb_dns_name)" bash scripts/smoke-test.sh
 

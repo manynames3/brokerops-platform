@@ -52,10 +52,17 @@ module "ecs_service" {
   assign_public_ip          = false
   service_security_group_id = aws_security_group.service.id
   environment = {
-    NODE_ENV     = "production"
-    AI_PROVIDER  = "managed"
-    DATABASE_URL = local.database_url
-    REDIS_URL    = local.redis_url
+    NODE_ENV            = "production"
+    AI_PROVIDER         = "managed"
+    DATABASE_URL        = local.database_url
+    REDIS_URL           = local.redis_url
+    API_ALLOWED_ORIGINS = join(",", var.api_allowed_origins)
+    WEB_APP_URL         = var.web_app_url
+    WORKSPACE_API_KEY   = var.workspace_api_key
+    WORKSPACE_NAME      = var.workspace_name
+    AUTH_TOKEN_SECRET   = var.auth_token_secret
+    AUTH_ADMIN_EMAIL    = var.auth_admin_email
+    AUTH_ADMIN_PASSWORD = var.auth_admin_password
   }
   tags = local.tags
 }
