@@ -10,7 +10,7 @@ The GitHub first impression needs to communicate the product and platform value 
 
 ## Tradeoff
 
-The GitHub About homepage points to the static Cloudflare Pages frontend, not an always-on AWS API. This keeps non-production infrastructure cost-conscious while still exposing the product surface. The README documents that the hosted frontend requires a correctly configured API URL and workspace key for live operational data.
+The GitHub About homepage points to the static Cloudflare Pages frontend, not an always-on AWS API. This keeps non-production infrastructure cost-conscious while still exposing the product surface. The README documents that the hosted frontend requires a correctly configured API URL and authenticated API access for live operational data.
 
 ## How to validate
 

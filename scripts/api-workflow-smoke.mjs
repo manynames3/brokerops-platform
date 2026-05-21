@@ -1,15 +1,33 @@
 #!/usr/bin/env node
 
 const apiUrl = (process.env.API_URL || "http://localhost:8080").replace(/\/$/, "");
-const workspaceApiKey = process.env.WORKSPACE_API_KEY || "brokerops-local-demo-key";
+const authEmail = process.env.AUTH_ADMIN_EMAIL || "ops@brokerops.local";
+const authPassword = process.env.AUTH_ADMIN_PASSWORD || "brokerops-demo-password";
 const runId = process.env.SMOKE_RUN_ID || `${Date.now()}`;
 const externalPolicyId = `SMOKE-${runId}`;
 const fileName = `smoke-${runId}.csv`;
+let authToken = "";
 
 async function main() {
   const health = await request("GET", "/health");
   assertEqual(health.status, "ok", "health status");
   assertEqual(health.database, "ok", "database status");
+
+  const rejectedDashboard = await request("GET", "/dashboard/summary", undefined, 401);
+  assertEqual(rejectedDashboard.error, "authentication_required", "unauthenticated dashboard rejection");
+
+  const rejectedLogin = await request("POST", "/auth/login", {
+    email: authEmail,
+    password: "not-the-password"
+  }, 401);
+  assertEqual(rejectedLogin.error, "invalid_credentials", "invalid login rejection");
+
+  const login = await request("POST", "/auth/login", {
+    email: authEmail,
+    password: authPassword
+  });
+  assertType(login.token, "string", "auth token");
+  authToken = login.token;
 
   const initialSummary = await request("GET", "/dashboard/summary");
   assertType(initialSummary.summary, "object", "dashboard summary");
@@ -89,7 +107,7 @@ async function request(method, path, body, expectedStatus = 200) {
   const response = await fetch(`${apiUrl}${path}`, {
     method,
     headers: {
-      "x-brokerops-workspace-key": workspaceApiKey,
+      ...(authToken ? { authorization: `Bearer ${authToken}` } : {}),
       ...(body ? { "content-type": "application/json" } : {})
     },
     body: body ? JSON.stringify(body) : undefined

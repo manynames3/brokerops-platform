@@ -37,7 +37,7 @@ Browser
   -> Worker
 ```
 
-The end-user dashboard is exported as static assets and deployed through Cloudflare Pages. The browser calls the deployed BrokerOps API through a build-time `NEXT_PUBLIC_API_URL`, keeping frontend delivery separate from the PostgreSQL-backed API runtime. Operational requests include `x-brokerops-workspace-key`; the API resolves that key to a configured organization and scopes dashboard metrics, policy records, statement files, exceptions, AI reviews, and exports to that workspace. The first user-facing workflow supports policy record import, sample statement import, validation feedback, reconciliation queue review, evidence-grounded AI review creation, human status updates, audit trail inspection, and exception report export.
+The end-user dashboard is exported as static assets and deployed through Cloudflare Pages. The browser calls the deployed BrokerOps API through a build-time `NEXT_PUBLIC_API_URL`, keeping frontend delivery separate from the PostgreSQL-backed API runtime. Operators sign in through `POST /auth/login`; operational requests include a bearer session token, and the API scopes dashboard metrics, policy records, statement files, exceptions, AI reviews, and exports to the signed-in user's organization. The first user-facing workflow supports policy record import, CSV file upload, sample statement import, validation feedback, reconciliation queue review, evidence-grounded AI review creation, human status updates, audit trail inspection, and exception report export.
 
 AWS profile:
 
@@ -57,6 +57,7 @@ Primary tables:
 
 - carriers
 - organizations
+- app_users
 - policies
 - statement_files
 - statement_rows
@@ -67,13 +68,14 @@ Primary tables:
 ## API workflow boundaries
 
 - `POST /statements/import` validates CSV input, normalizes statement rows into PostgreSQL, runs deterministic reconciliation, creates exceptions, and records audit events in a single transaction.
+- `POST /auth/login` verifies operator credentials and returns a signed session token.
 - `POST /policies/import` validates expected policy records and upserts them before statement reconciliation.
 - `GET /dashboard/summary` exposes operational counts for the dashboard.
 - `POST /exceptions/:id/ai-review` creates an evidence-grounded review from database records only.
 - `PATCH /exceptions/:id/review` records human workflow status changes and audit metadata.
 - `GET /exceptions/report.csv` exports the current exception queue with latest AI review evidence for follow-up.
 
-All operational workflow endpoints require `x-brokerops-workspace-key`. `GET /health` and `GET /` remain public so deployment automation can verify service health and discover metadata without customer data access.
+All operational workflow endpoints require an authenticated user session. `GET /health`, `GET /health/readiness`, `GET /auth/bootstrap`, and `GET /` remain public so deployment automation can verify service health and discover metadata without customer data access.
 
 ## AI review boundary
 

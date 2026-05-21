@@ -17,6 +17,8 @@ BrokerOps uses environment-aware architecture: local development runs the full a
 - Deployment path: [docs/deployment.md](docs/deployment.md)
 - Cost controls: [docs/cost-controls.md](docs/cost-controls.md)
 - Security boundary: [docs/security.md](docs/security.md)
+- Paid pilot plan: [docs/paid-pilot.md](docs/paid-pilot.md)
+- Preview validation evidence template: [docs/evidence/preview-validation-template.md](docs/evidence/preview-validation-template.md)
 - Operational runbooks: [runbooks](runbooks)
 
 ## Reviewer quick path
@@ -36,23 +38,23 @@ BrokerOps is aimed at insurance agency and MGA operations teams that reconcile r
 The end-user experience is intentionally focused on the core workflow instead of broad enterprise features:
 
 - explain the platform value immediately
-- guide a user through a sample carrier statement import
+- guide a user through a sample carrier statement import or uploaded CSV
 - load expected policy records before statement import
-- show validation, API connectivity, and workspace boundary states
+- show validation, API connectivity, sign-in, and workspace boundary states
 - create a reconciliation queue from deterministic rules
 - let an operator review exception evidence
 - persist AI-assisted review output and human review status to the audit trail
 - export a reconciliation exception report
 - provide a request-access path for paid pilot conversations
 
-Full self-serve billing, user authentication, customer administration, and carrier templates are still required before charging broadly for production customer use.
+Full self-serve billing, customer administration, and carrier templates are still required before charging broadly for production customer use.
 
 ## Core workflow
 
 1. Expected policy records are loaded from structured CSV data.
 2. Carrier statements are ingested from structured CSV data.
 3. CSV rows are validated before any database writes occur.
-4. Operational API routes require a workspace key and scope records to that workspace organization.
+4. Operational API routes require a signed-in user and scope records to that user's organization.
 5. Rows are normalized into PostgreSQL.
 6. Reconciliation logic matches statement rows against expected policy records.
 7. Exceptions are created for mismatches, missing records, duplicate payments, account mismatches, and unexpected amounts.
@@ -129,24 +131,30 @@ Then open:
 After local startup and seeding, open the web app and run the guided sample workflow:
 
 1. Confirm the API status reads `API connected`.
-2. Select `Try sample workflow`.
-3. Import the sample policy records.
-4. Import the sample carrier statement.
-5. Open an exception from the reconciliation queue.
-6. Select `Create review` to save an evidence-grounded AI review.
-7. Add a review note and save a status change.
-8. Export the exception report.
-9. Confirm the audit trail records the AI review and human review event.
+2. Sign in with the local demo admin credentials.
+3. Select `Try sample workflow`.
+4. Import the sample policy records or upload a policy CSV.
+5. Import the sample carrier statement or upload a statement CSV.
+6. Open an exception from the reconciliation queue.
+7. Select `Create review` to save an evidence-grounded AI review.
+8. Add a review note and save a status change.
+9. Export the exception report.
+10. Confirm the audit trail records the AI review and human review event.
 
 If the web app shows `Demo API is not connected`, the frontend is running without a reachable API. Start the local API through Docker Compose or rebuild the Cloudflare Pages deployment with `NEXT_PUBLIC_API_URL` pointing at a deployed BrokerOps API.
 
-Opening the API root at `http://localhost:8080/` returns service metadata, the configured web app URL, the workspace header name, and the main workflow endpoints. Use the web app at `http://localhost:3000` for the operator demo.
+Opening the API root at `http://localhost:8080/` returns service metadata, the configured web app URL, auth route, and the main workflow endpoints. Use the web app at `http://localhost:3000` for the operator demo.
 
-## Workspace boundary
+## Auth and workspace boundary
 
-Operational API routes require `x-brokerops-workspace-key`. Local development uses `brokerops-local-demo-key` from `.env.example`; preview and production profiles require explicit `WORKSPACE_API_KEY` values and do not fall back to local defaults.
+Operational API routes require a bearer session token from `POST /auth/login`. Local development seeds a default admin user from `.env.example`:
 
-The workspace key is a minimum controlled-demo boundary, not a replacement for production user authentication. It scopes carriers, policy records, statement imports, exceptions, AI reviews, dashboard metrics, and exports to a configured organization so demos do not operate against a global shared queue.
+```text
+AUTH_ADMIN_EMAIL=ops@brokerops.local
+AUTH_ADMIN_PASSWORD=brokerops-demo-password
+```
+
+The API still supports `x-brokerops-workspace-key` as an automation fallback for controlled smoke tests, but the end-user workflow signs in and sends an `Authorization: Bearer ...` token. Signed-in users are attached to an organization, and carriers, policy records, statement imports, exceptions, AI reviews, dashboard metrics, and exports are scoped to that organization.
 
 ## End-user frontend
 
@@ -154,7 +162,7 @@ The end-user dashboard is a static-export Next.js app that can be deployed to Cl
 
 ```bash
 export NEXT_PUBLIC_API_URL=https://api.example.com
-export NEXT_PUBLIC_WORKSPACE_KEY=replace-with-deployed-api-workspace-key
+export NEXT_PUBLIC_DEMO_EMAIL=ops@example.com
 export NEXT_PUBLIC_WORKSPACE_NAME="BrokerOps Preview Workspace"
 export NEXT_PUBLIC_REQUEST_ACCESS_URL=https://example.com/request-access
 make web-build
@@ -162,7 +170,15 @@ make web-build
 
 If `NEXT_PUBLIC_REQUEST_ACCESS_URL` is not set, the CTA scrolls to the pilot section instead of pointing to a fake contact address.
 
-The manual GitHub workflow `.github/workflows/deploy-web-cloudflare-pages.yml` publishes `apps/web/out` to Cloudflare Pages. It expects `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` secrets, plus an optional `CLOUDFLARE_PAGES_PROJECT` repository variable. The default Pages project name is `brokerops-platform-web`. The workflow inputs include `workspace_key` and `workspace_name`; they must match the deployed API workspace configuration for the hosted demo to load operational data.
+The manual GitHub workflow `.github/workflows/deploy-web-cloudflare-pages.yml` publishes `apps/web/out` to Cloudflare Pages. It expects `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` secrets, plus an optional `CLOUDFLARE_PAGES_PROJECT` repository variable. The default Pages project name is `brokerops-platform-web`. The workflow inputs include `workspace_name` and optional `demo_email`; the deployed API must have matching admin credentials configured through environment-specific secrets.
+
+## Auth API
+
+```bash
+TOKEN=$(curl -fsS http://localhost:8080/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"ops@brokerops.local","password":"brokerops-demo-password"}' | jq -r .token)
+```
 
 ## Statement import API
 
@@ -171,7 +187,7 @@ Local development supports JSON-wrapped CSV imports so the workflow can be exerc
 ```bash
 curl -fsS http://localhost:8080/statements/import \
   -H 'content-type: application/json' \
-  -H 'x-brokerops-workspace-key: brokerops-local-demo-key' \
+  -H "authorization: Bearer $TOKEN" \
   -d '{
     "carrierName": "Northstar Mutual",
     "fileName": "northstar-february.csv",
@@ -189,7 +205,7 @@ Policy records can be loaded before statement reconciliation:
 ```bash
 curl -fsS http://localhost:8080/policies/import \
   -H 'content-type: application/json' \
-  -H 'x-brokerops-workspace-key: brokerops-local-demo-key' \
+  -H "authorization: Bearer $TOKEN" \
   -d '{
     "carrierName": "Northstar Mutual",
     "actor": "local-developer",
@@ -206,7 +222,7 @@ Exceptions support review status changes with audit events:
 ```bash
 curl -fsS -X PATCH http://localhost:8080/exceptions/$EXCEPTION_ID/review \
   -H 'content-type: application/json' \
-  -H 'x-brokerops-workspace-key: brokerops-local-demo-key' \
+  -H "authorization: Bearer $TOKEN" \
   -d '{"status":"in_review","actor":"local-reviewer","note":"Investigating carrier rate change"}'
 ```
 
@@ -218,7 +234,7 @@ Use the browser export button or fetch a CSV report directly:
 
 ```bash
 curl -fsS http://localhost:8080/exceptions/report.csv \
-  -H 'x-brokerops-workspace-key: brokerops-local-demo-key' \
+  -H "authorization: Bearer $TOKEN" \
   -o brokerops-exception-report.csv
 ```
 
@@ -246,13 +262,13 @@ make validate-local
 
 This runs Docker Compose configuration validation, TypeScript lint/type checks, tests, and Terraform formatting. It does not create AWS resources.
 
-The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Terraform wires the ECS task to the RDS and ElastiCache endpoints, then GitHub Actions runs a one-shot ECS migration task before hitting the preview ALB with the smoke workflow. The Cloudflare Pages workflow separately deploys the static end-user frontend with `NEXT_PUBLIC_API_URL` pointing at the target API. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE`, `DATABASE_PASSWORD`, and `WORKSPACE_API_KEY` values so cost-bearing deployments do not use placeholder runtime inputs.
+The preview deploy workflow builds `apps/api/Dockerfile`, pushes the API image to ECR, and passes the immutable image URI into Terraform. Terraform wires the ECS task to the RDS and ElastiCache endpoints, then GitHub Actions runs a one-shot ECS migration task before hitting the preview ALB with the smoke workflow. The Cloudflare Pages workflow separately deploys the static end-user frontend with `NEXT_PUBLIC_API_URL` pointing at the target API. Local `preview-up` and `production-plan` commands require explicit `CONTAINER_IMAGE`, `DATABASE_PASSWORD`, `WORKSPACE_API_KEY`, `AUTH_TOKEN_SECRET`, and `AUTH_ADMIN_PASSWORD` values so cost-bearing deployments do not use placeholder runtime inputs.
 
 ## Monetization direction
 
 BrokerOps is not ready for self-serve paid signup yet. The credible monetization path is a paid pilot for a narrow operations workflow:
 
-- starting price target: $750/month after a setup fee for a guided pilot
+- starting price target: $750/month after setup for a guided pilot
 - buyer: agency or MGA operations/finance owner
 - measurable outcome: imported statements, exceptions detected, exceptions reviewed, audit trail captured
 - paid-only surface later: real customer imports, saved reconciliation history, AI review, exports, team workflow, and retention history

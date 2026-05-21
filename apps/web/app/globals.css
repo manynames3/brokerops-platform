@@ -235,6 +235,55 @@ h3 {
   background: #a97816;
 }
 
+.status-signed_out .status-dot {
+  background: #687080;
+}
+
+.auth-panel {
+  border-top: 1px solid #e3e7ed;
+  display: grid;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.auth-panel span,
+.auth-panel small {
+  color: #687080;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.auth-panel strong {
+  color: #1f272f;
+  display: block;
+  margin: 3px 0;
+}
+
+.auth-form {
+  gap: 12px;
+}
+
+.file-summary {
+  background: #f2f6f7;
+  border: 1px solid #d8e5e8;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.file-summary strong {
+  color: #173e4a;
+  font-size: 13px;
+}
+
+.file-summary span {
+  color: #55616d;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .workflow-strip {
   display: grid;
   gap: 10px;
@@ -588,6 +637,18 @@ h3 {
   border-color: white;
   color: #173e4a;
   justify-self: start;
+}
+
+.pilot-terms {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.pilot-terms span {
+  color: #eef6f7;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 @media (min-width: 820px) {

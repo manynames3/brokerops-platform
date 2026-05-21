@@ -47,11 +47,11 @@ make preview-migrate
 make preview-smoke
 ```
 
-`make preview-plan`, `make preview-up`, and `make production-plan` require explicit `CONTAINER_IMAGE`, `DATABASE_PASSWORD`, and `WORKSPACE_API_KEY` values. This keeps cost-bearing infrastructure commands environment-aware and avoids placeholder runtime deployments.
+`make preview-plan`, `make preview-up`, and `make production-plan` require explicit `CONTAINER_IMAGE`, `DATABASE_PASSWORD`, `WORKSPACE_API_KEY`, `AUTH_TOKEN_SECRET`, and `AUTH_ADMIN_PASSWORD` values. This keeps cost-bearing infrastructure commands environment-aware and avoids placeholder runtime deployments.
 
-Preview smoke tests resolve the ALB DNS name from Terraform output. `scripts/smoke-test.sh` requires an explicit `API_URL` and sends `WORKSPACE_API_KEY`, which prevents a cloud validation run from accidentally testing a local API process or an unscoped workflow.
+Preview smoke tests resolve the ALB DNS name from Terraform output. `scripts/smoke-test.sh` requires an explicit `API_URL`, signs in with `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD`, and exercises authenticated operational routes.
 
-`make web-build` creates the static Next.js export for Cloudflare Pages. Set `NEXT_PUBLIC_API_URL` to the target API URL and `NEXT_PUBLIC_WORKSPACE_KEY` to the matching API workspace key when building for preview or production.
+`make web-build` creates the static Next.js export for Cloudflare Pages. Set `NEXT_PUBLIC_API_URL` to the target API URL and `NEXT_PUBLIC_DEMO_EMAIL` to the operator email shown in the sign-in form when building for preview or production.
 
 Set `NEXT_PUBLIC_REQUEST_ACCESS_URL` to a monitored paid-pilot form or inbox when building a public demo. If it is not configured, the frontend CTA stays on-page and scrolls to the pilot section.
 
@@ -78,10 +78,11 @@ external_policy_id,account_name,payment_date,premium_cents,commission_rate,commi
 
 Use `premium_cents` and `commission_amount_cents` as whole-cent integers. Dollar amounts with two decimals are accepted for local ergonomics. `commission_rate` accepts decimal rates such as `0.1` or percentages such as `10%`.
 
-Operational API requests must include `x-brokerops-workspace-key`. Local development uses:
+Operational API requests should include an `Authorization: Bearer <token>` header returned by `POST /auth/login`. Local development creates the default admin from `.env.example`.
 
 ```text
-x-brokerops-workspace-key: brokerops-local-demo-key
+AUTH_ADMIN_EMAIL=ops@brokerops.local
+AUTH_ADMIN_PASSWORD=brokerops-demo-password
 ```
 
 ## Browser demo path
@@ -92,13 +93,14 @@ Use this path when evaluating product readiness locally:
 2. Run `make local-seed`.
 3. Open `http://localhost:3000`.
 4. Confirm the API status is connected.
-5. Import the sample policy records from the web app.
-6. Import the sample statement CSV from the web app.
-7. Select a created exception.
-8. Create an AI-assisted review.
-9. Save a human review status with a note.
-10. Export the exception report.
-11. Confirm the exception detail shows audit events.
+5. Sign in with the local admin credentials.
+6. Import the sample policy records or upload a policy CSV from the web app.
+7. Import the sample statement CSV or upload a statement CSV from the web app.
+8. Select a created exception.
+9. Create an AI-assisted review.
+10. Save a human review status with a note.
+11. Export the exception report.
+12. Confirm the exception detail shows audit events.
 
 This path exercises the same API workflow as `make local-smoke`, but through the end-user surface instead of command-line requests.
 

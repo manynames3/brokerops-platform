@@ -15,6 +15,14 @@ const workspaceApiKey =
   process.env.WORKSPACE_API_KEY ||
   (!isCloudProfile ? "brokerops-local-demo-key" : undefined);
 
+const authTokenSecret =
+  process.env.AUTH_TOKEN_SECRET ||
+  (!isCloudProfile ? "brokerops-local-auth-secret-change-me" : undefined);
+
+const authAdminPassword =
+  process.env.AUTH_ADMIN_PASSWORD ||
+  (!isCloudProfile ? "brokerops-demo-password" : undefined);
+
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is required for BrokerOps preview and production API runtimes.");
 }
@@ -27,6 +35,14 @@ if (!workspaceApiKey) {
   throw new Error("WORKSPACE_API_KEY is required for BrokerOps preview and production API runtimes.");
 }
 
+if (!authTokenSecret) {
+  throw new Error("AUTH_TOKEN_SECRET is required for BrokerOps preview and production API runtimes.");
+}
+
+if (!authAdminPassword) {
+  throw new Error("AUTH_ADMIN_PASSWORD is required for BrokerOps preview and production API runtimes.");
+}
+
 export const config = {
   nodeEnv,
   port: Number(process.env.PORT || 8080),
@@ -35,6 +51,9 @@ export const config = {
   webAppUrl: process.env.WEB_APP_URL || "http://localhost:3000",
   workspaceApiKey,
   workspaceName: process.env.WORKSPACE_NAME || "BrokerOps Demo Workspace",
+  authTokenSecret,
+  authAdminEmail: process.env.AUTH_ADMIN_EMAIL || "ops@brokerops.local",
+  authAdminPassword,
   aiProvider: process.env.AI_PROVIDER || "local",
   aiModel: process.env.AI_MODEL || "brokerops-local-rules-v1",
   corsOrigins: parseCorsOrigins(process.env.API_ALLOWED_ORIGINS, nodeEnv)

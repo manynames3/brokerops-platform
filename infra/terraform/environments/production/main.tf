@@ -60,6 +60,9 @@ module "ecs_service" {
     WEB_APP_URL         = var.web_app_url
     WORKSPACE_API_KEY   = var.workspace_api_key
     WORKSPACE_NAME      = var.workspace_name
+    AUTH_TOKEN_SECRET   = var.auth_token_secret
+    AUTH_ADMIN_EMAIL    = var.auth_admin_email
+    AUTH_ADMIN_PASSWORD = var.auth_admin_password
   }
   tags = local.tags
 }

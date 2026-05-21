@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { config } from "./config.js";
@@ -7,15 +8,22 @@ import { registerStatementRoutes } from "./routes/statements.js";
 import { registerExceptionRoutes } from "./routes/exceptions.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerPolicyRoutes } from "./routes/policies.js";
-import { workspaceHeaderName } from "./workspace.js";
+import { registerAuthRoutes } from "./routes/auth.js";
+import { authHeaderName, workspaceHeaderName } from "./workspace.js";
 
 initializeTelemetry();
 
 const app = Fastify({ logger: true });
 
+app.addHook("onRequest", async (request, reply) => {
+  const incomingRequestId = request.headers["x-request-id"];
+  const requestId = Array.isArray(incomingRequestId) ? incomingRequestId[0] : incomingRequestId;
+  reply.header("x-request-id", requestId || crypto.randomUUID());
+});
+
 await app.register(cors, {
   origin: config.corsOrigins,
-  allowedHeaders: ["content-type", workspaceHeaderName],
+  allowedHeaders: ["content-type", "x-request-id", authHeaderName, workspaceHeaderName],
   methods: ["GET", "POST", "PATCH", "OPTIONS"]
 });
 
@@ -25,9 +33,11 @@ app.get("/", async () => ({
   purpose: "Insurance carrier statement reconciliation API",
   webAppUrl: config.webAppUrl,
   healthUrl: "/health",
+  authUrl: "/auth/login",
   workspaceHeader: workspaceHeaderName,
-  workspaceRequiredForOperationalRoutes: true,
+  authRequiredForOperationalRoutes: true,
   workflow: [
+    "POST /auth/login",
     "POST /policies/import",
     "POST /statements/import",
     "GET /exceptions",
@@ -38,6 +48,7 @@ app.get("/", async () => ({
 }));
 
 await registerHealthRoutes(app);
+await registerAuthRoutes(app);
 await registerDashboardRoutes(app);
 await registerPolicyRoutes(app);
 await registerStatementRoutes(app);

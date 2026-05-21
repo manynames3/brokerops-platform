@@ -41,6 +41,9 @@ services:
       WEB_APP_URL: http://localhost:3000
       WORKSPACE_API_KEY: brokerops-local-demo-key
       WORKSPACE_NAME: BrokerOps Demo Workspace
+      AUTH_TOKEN_SECRET: brokerops-local-auth-secret-change-me
+      AUTH_ADMIN_EMAIL: ops@brokerops.local
+      AUTH_ADMIN_PASSWORD: brokerops-demo-password
     command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/api dev"
     ports:
       - "8080:8080"
@@ -63,6 +66,9 @@ services:
       AI_PROVIDER: local
       WORKSPACE_API_KEY: brokerops-local-demo-key
       WORKSPACE_NAME: BrokerOps Demo Workspace
+      AUTH_TOKEN_SECRET: brokerops-local-auth-secret-change-me
+      AUTH_ADMIN_EMAIL: ops@brokerops.local
+      AUTH_ADMIN_PASSWORD: brokerops-demo-password
     command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/worker dev"
     depends_on:
       postgres:
@@ -80,7 +86,7 @@ services:
       NODE_ENV: development
       API_INTERNAL_URL: http://api:8080
       NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_PUBLIC_WORKSPACE_KEY: brokerops-local-demo-key
+      NEXT_PUBLIC_DEMO_EMAIL: ops@brokerops.local
       NEXT_PUBLIC_WORKSPACE_NAME: BrokerOps Demo Workspace
       NEXT_PUBLIC_REQUEST_ACCESS_URL: "#pilot"
     command: sh -c "corepack enable && pnpm install && pnpm --filter @brokerops/web dev"

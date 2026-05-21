@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type ReviewStatus = "open" | "in_review" | "resolved";
-type LoadStatus = "loading" | "ready" | "unavailable" | "unauthorized";
+type LoadStatus = "loading" | "ready" | "unavailable" | "unauthorized" | "signed_out";
 
 type ExceptionRow = {
   id: string;
@@ -128,6 +128,17 @@ type ExceptionDetailResponse = {
   auditEvents: AuditEvent[];
 };
 
+type AuthSession = {
+  token: string;
+  expiresAt: string;
+  user: {
+    email: string;
+    displayName: string;
+    role: string;
+    organizationName: string;
+  };
+};
+
 const emptySummary: DashboardSummary = {
   statement_files: 0,
   statement_rows: 0,
@@ -158,10 +169,12 @@ const samplePolicyCsv = [
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080").replace(/\/$/, "");
 const requestAccessUrl = process.env.NEXT_PUBLIC_REQUEST_ACCESS_URL || "#pilot";
-const workspaceKey = process.env.NEXT_PUBLIC_WORKSPACE_KEY || "brokerops-local-demo-key";
+const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL || "ops@brokerops.local";
 const workspaceName = process.env.NEXT_PUBLIC_WORKSPACE_NAME || "BrokerOps Demo Workspace";
+const authStorageKey = "brokerops-auth-session";
 
 export default function Home() {
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [summary, setSummary] = useState<DashboardSummary>(emptySummary);
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
   const [statements, setStatements] = useState<StatementFile[]>([]);
@@ -182,10 +195,40 @@ export default function Home() {
   const [reviewStatus, setReviewStatus] = useState<ReviewStatus>("in_review");
   const [reviewNote, setReviewNote] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [email, setEmail] = useState(demoEmail);
+  const [password, setPassword] = useState("");
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadDashboard();
+    const saved = window.localStorage.getItem(authStorageKey);
+    if (!saved) {
+      setStatus("signed_out");
+      setDetailStatus("ready");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(saved) as AuthSession;
+      if (new Date(parsed.expiresAt).getTime() <= Date.now()) {
+        window.localStorage.removeItem(authStorageKey);
+        setStatus("signed_out");
+        setDetailStatus("ready");
+        return;
+      }
+
+      setSession(parsed);
+    } catch {
+      window.localStorage.removeItem(authStorageKey);
+      setStatus("signed_out");
+      setDetailStatus("ready");
+    }
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      void loadDashboard();
+    }
+  }, [session?.token]);
 
   useEffect(() => {
     if (!selectedExceptionId && exceptions.length > 0) {
@@ -211,26 +254,88 @@ export default function Home() {
 
   const statusLabel = useMemo(() => {
     if (status === "loading") return "Checking API";
-    if (status === "unauthorized") return "Workspace key rejected";
+    if (status === "signed_out") return "Sign in required";
+    if (status === "unauthorized") return "Session rejected";
     if (status === "unavailable") return "Demo API not connected";
     return "API connected";
   }, [status]);
-  const apiReady = status === "ready";
+  const apiReady = status === "ready" && Boolean(session);
   const statementReady = apiReady && policies.length > 0;
 
+  async function submitLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthMessage("Signing in...");
+    setStatus("loading");
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/auth/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const body = await response.json();
+
+      if (!response.ok) {
+        setStatus("signed_out");
+        setAuthMessage(body.message || "Sign in failed.");
+        return;
+      }
+
+      const nextSession = body as AuthSession;
+      window.localStorage.setItem(authStorageKey, JSON.stringify(nextSession));
+      setSession(nextSession);
+      setAuthMessage(null);
+    } catch {
+      setStatus("unavailable");
+      setAuthMessage("The BrokerOps API could not be reached.");
+    }
+  }
+
+  function signOut() {
+    window.localStorage.removeItem(authStorageKey);
+    setSession(null);
+    setSummary(emptySummary);
+    setExceptions([]);
+    setStatements([]);
+    setPolicies([]);
+    setDetail(null);
+    setStatus("signed_out");
+    setDetailStatus("ready");
+  }
+
+  async function loadPolicyFile(file: File | undefined) {
+    if (!file) return;
+    setPolicyCsv(await file.text());
+    setPolicyImportResult(null);
+  }
+
+  async function loadStatementFile(file: File | undefined) {
+    if (!file) return;
+    setFileName(file.name);
+    setCsv(await file.text());
+    setImportResult(null);
+  }
+
   async function loadDashboard() {
+    if (!session) {
+      setStatus("signed_out");
+      return;
+    }
+
     setStatus("loading");
 
     try {
       const [summaryResponse, exceptionsResponse, statementsResponse, policiesResponse] = await Promise.all([
-        fetch(`${apiBaseUrl}/dashboard/summary`, { headers: apiHeaders() }),
-        fetch(`${apiBaseUrl}/exceptions`, { headers: apiHeaders() }),
-        fetch(`${apiBaseUrl}/statements`, { headers: apiHeaders() }),
-        fetch(`${apiBaseUrl}/policies`, { headers: apiHeaders() })
+        fetch(`${apiBaseUrl}/dashboard/summary`, { headers: apiHeaders(undefined, session.token) }),
+        fetch(`${apiBaseUrl}/exceptions`, { headers: apiHeaders(undefined, session.token) }),
+        fetch(`${apiBaseUrl}/statements`, { headers: apiHeaders(undefined, session.token) }),
+        fetch(`${apiBaseUrl}/policies`, { headers: apiHeaders(undefined, session.token) })
       ]);
 
       if (!summaryResponse.ok || !exceptionsResponse.ok || !statementsResponse.ok || !policiesResponse.ok) {
         if ([summaryResponse, exceptionsResponse, statementsResponse, policiesResponse].some((response) => response.status === 401)) {
+          window.localStorage.removeItem(authStorageKey);
+          setSession(null);
           setSummary(emptySummary);
           setExceptions([]);
           setStatements([]);
@@ -272,7 +377,7 @@ export default function Home() {
     try {
       const response = await fetch(`${apiBaseUrl}/policies/import`, {
         method: "POST",
-        headers: apiHeaders("json"),
+        headers: apiHeaders("json", session?.token),
         body: JSON.stringify({
           carrierName: policyCarrierName,
           actor: "demo-operator",
@@ -307,7 +412,7 @@ export default function Home() {
     setActionMessage(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/exceptions/${exceptionId}`, { headers: apiHeaders() });
+      const response = await fetch(`${apiBaseUrl}/exceptions/${exceptionId}`, { headers: apiHeaders(undefined, session?.token) });
       if (!response.ok) {
         throw new Error("Exception detail request failed.");
       }
@@ -329,7 +434,7 @@ export default function Home() {
     try {
       const response = await fetch(`${apiBaseUrl}/statements/import`, {
         method: "POST",
-        headers: apiHeaders("json"),
+        headers: apiHeaders("json", session?.token),
         body: JSON.stringify({
           carrierName,
           fileName,
@@ -371,12 +476,12 @@ export default function Home() {
     try {
       const response = await fetch(`${apiBaseUrl}/exceptions/${detail.exception.id}/ai-review`, {
         method: "POST",
-        headers: apiHeaders()
+        headers: apiHeaders(undefined, session?.token)
       });
 
       if (!response.ok) {
         if (response.status === 401) {
-          setActionMessage("Workspace key was rejected. Rebuild the frontend with the deployed API workspace key.");
+          setActionMessage("Your session is no longer authorized. Sign in again before creating an AI review.");
           return;
         }
         throw new Error("AI review request failed.");
@@ -397,7 +502,7 @@ export default function Home() {
     try {
       const response = await fetch(`${apiBaseUrl}/exceptions/${detail.exception.id}/review`, {
         method: "PATCH",
-        headers: apiHeaders("json"),
+        headers: apiHeaders("json", session?.token),
         body: JSON.stringify({
           status: reviewStatus,
           actor: "demo-operator",
@@ -407,7 +512,7 @@ export default function Home() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          setActionMessage("Workspace key was rejected. Rebuild the frontend with the deployed API workspace key.");
+          setActionMessage("Your session is no longer authorized. Sign in again before saving review status.");
           return;
         }
         throw new Error("Review status request failed.");
@@ -427,10 +532,10 @@ export default function Home() {
     setActionMessage("Preparing exception report...");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/exceptions/report.csv`, { headers: apiHeaders() });
+      const response = await fetch(`${apiBaseUrl}/exceptions/report.csv`, { headers: apiHeaders(undefined, session?.token) });
       if (!response.ok) {
         if (response.status === 401) {
-          setActionMessage("Workspace key was rejected. Rebuild the frontend with the deployed API workspace key.");
+          setActionMessage("Your session is no longer authorized. Sign in again before exporting the report.");
           return;
         }
         throw new Error("Exception report request failed.");
@@ -447,7 +552,7 @@ export default function Home() {
       URL.revokeObjectURL(downloadUrl);
       setActionMessage("Exception report downloaded.");
     } catch {
-      setActionMessage("Exception report could not be exported. Confirm the API workspace key and service health.");
+      setActionMessage("Exception report could not be exported. Confirm the API session and service health.");
     }
   }
 
@@ -476,7 +581,7 @@ export default function Home() {
           <dl>
             <div>
               <dt>Workspace</dt>
-              <dd>{workspaceName}</dd>
+              <dd>{session?.user.organizationName || workspaceName}</dd>
             </div>
             <div>
               <dt>Built for</dt>
@@ -487,6 +592,16 @@ export default function Home() {
               <dd>One carrier statement workflow, one policy export, measurable exceptions reviewed.</dd>
             </div>
           </dl>
+          <AuthPanel
+            authMessage={authMessage}
+            email={email}
+            password={password}
+            session={session}
+            setEmail={setEmail}
+            setPassword={setPassword}
+            onSignIn={submitLogin}
+            onSignOut={signOut}
+          />
         </aside>
       </section>
 
@@ -499,10 +614,10 @@ export default function Home() {
 
       {status === "unavailable" || status === "unauthorized" ? <ApiUnavailable status={status} /> : null}
       <section className="notice notice-info">
-        <strong>Controlled workspace boundary.</strong>
+        <strong>Authenticated workspace boundary.</strong>
         <span>
-          Operational API routes require a workspace key and return only records scoped to this demo workspace.
-          Use sanitized carrier and policy exports until full user authentication is connected for a paid production pilot.
+          Operational API routes require a signed-in user and return only records scoped to that user&apos;s organization.
+          Use sanitized exports for demos until production data handling is approved for a paid pilot.
         </span>
       </section>
 
@@ -532,12 +647,24 @@ export default function Home() {
             <input value={policyCarrierName} onChange={(event) => setPolicyCarrierName(event.target.value)} />
           </label>
           <label>
+            Upload policy CSV
+            <input
+              accept=".csv,text/csv"
+              type="file"
+              onChange={(event) => void loadPolicyFile(event.target.files?.[0])}
+            />
+          </label>
+          <div className="file-summary">
+            <strong>{csvDataRowCount(policyCsv)} policy rows ready</strong>
+            <span>Required headers: external_policy_id, account_name, expected_commission_rate, effective_date</span>
+          </div>
+          <label>
             Policy CSV
             <textarea value={policyCsv} onChange={(event) => setPolicyCsv(event.target.value)} rows={7} />
           </label>
 
           <button className="button primary" type="submit" disabled={!apiReady || policyImportState === "submitting"}>
-            {policyImportState === "submitting" ? "Importing..." : apiReady ? "Import policy records" : "Connect API to import"}
+            {policyImportState === "submitting" ? "Importing..." : apiReady ? "Import policy records" : "Sign in to import"}
           </button>
 
           <PolicyImportResult result={policyImportResult} />
@@ -593,6 +720,18 @@ export default function Home() {
             <input value={fileName} onChange={(event) => setFileName(event.target.value)} />
           </label>
           <label>
+            Upload statement CSV
+            <input
+              accept=".csv,text/csv"
+              type="file"
+              onChange={(event) => void loadStatementFile(event.target.files?.[0])}
+            />
+          </label>
+          <div className="file-summary">
+            <strong>{csvDataRowCount(csv)} statement rows ready</strong>
+            <span>Required headers: external_policy_id, account_name, payment_date, premium_cents, commission_rate, commission_amount_cents</span>
+          </div>
+          <label>
             CSV
             <textarea value={csv} onChange={(event) => setCsv(event.target.value)} rows={9} />
           </label>
@@ -601,7 +740,7 @@ export default function Home() {
             {importState === "submitting"
               ? "Importing..."
               : !apiReady
-                ? "Connect API to import"
+                ? "Sign in to import"
                 : statementReady
                   ? "Import and reconcile"
                   : "Import policy records first"}
@@ -700,6 +839,11 @@ export default function Home() {
             Bring one carrier statement and one policy export. BrokerOps turns the import into validation results,
             reconciliation exceptions, evidence-backed review notes, and an audit trail your operations team can inspect.
           </p>
+          <div className="pilot-terms">
+            <span>Starting pilot: $750/month after setup</span>
+            <span>Scope: one carrier, one policy export, one operator team</span>
+            <span>Outcome: exception report and audit trail for each statement cycle</span>
+          </div>
         </div>
         <a className="button primary" href={requestAccessUrl}>Request paid pilot</a>
       </section>
@@ -716,14 +860,66 @@ function WorkflowStep({ title, text }: { title: string; text: string }) {
   );
 }
 
+function AuthPanel({
+  authMessage,
+  email,
+  password,
+  session,
+  setEmail,
+  setPassword,
+  onSignIn,
+  onSignOut
+}: {
+  authMessage: string | null;
+  email: string;
+  password: string;
+  session: AuthSession | null;
+  setEmail: (value: string) => void;
+  setPassword: (value: string) => void;
+  onSignIn: (event: FormEvent<HTMLFormElement>) => void;
+  onSignOut: () => void;
+}) {
+  if (session) {
+    return (
+      <div className="auth-panel">
+        <div>
+          <span>Signed in</span>
+          <strong>{session.user.displayName}</strong>
+          <small>{session.user.email} - {session.user.role}</small>
+        </div>
+        <button className="button secondary compact" type="button" onClick={onSignOut}>Sign out</button>
+      </div>
+    );
+  }
+
+  return (
+    <form className="auth-panel auth-form" onSubmit={onSignIn}>
+      <label>
+        Email
+        <input value={email} onChange={(event) => setEmail(event.target.value)} />
+      </label>
+      <label>
+        Password
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="Local default: brokerops-demo-password"
+        />
+      </label>
+      <button className="button primary compact" type="submit">Sign in</button>
+      {authMessage ? <p className="action-message">{authMessage}</p> : null}
+    </form>
+  );
+}
+
 function ApiUnavailable({ status }: { status: Extract<LoadStatus, "unavailable" | "unauthorized"> }) {
   if (status === "unauthorized") {
     return (
       <section className="notice notice-warning">
-        <strong>Workspace key is not accepted.</strong>
+        <strong>Session is not accepted.</strong>
         <span>
-          The API is reachable, but it rejected this frontend&apos;s workspace key. Rebuild the frontend with
-          a `NEXT_PUBLIC_WORKSPACE_KEY` value that matches the deployed BrokerOps API.
+          The API is reachable, but it rejected this session. Sign in again with an active BrokerOps user.
         </span>
       </section>
     );
@@ -981,17 +1177,29 @@ function formatRate(value: string) {
   return `${Math.round(parsed * 10000) / 100}%`;
 }
 
+function csvDataRowCount(value: string) {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return Math.max(lines.length - 1, 0);
+}
+
 function emptyStateMessage(status: LoadStatus) {
   if (status === "loading") return "Loading reconciliation queue.";
-  if (status === "unauthorized") return "The API rejected this frontend's workspace key.";
+  if (status === "signed_out") return "Sign in to import statements and review exceptions.";
+  if (status === "unauthorized") return "The API rejected this session.";
   if (status === "unavailable") return "Connect the BrokerOps API to import statements and review exceptions.";
   return "No reconciliation exceptions returned. Import the sample CSV to create a review queue.";
 }
 
-function apiHeaders(format?: "json") {
-  const headers: Record<string, string> = {
-    "x-brokerops-workspace-key": workspaceKey
-  };
+function apiHeaders(format?: "json", token?: string) {
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers.authorization = `Bearer ${token}`;
+  }
 
   if (format === "json") {
     headers["content-type"] = "application/json";
@@ -1037,7 +1245,7 @@ function apiErrorToValidationError(body: unknown, statusCode: number): Validatio
 
   return {
     rowNumber: 0,
-    code: statusCode === 401 ? "workspace_key_required" : "api_error",
+    code: statusCode === 401 ? "authentication_required" : "api_error",
     message
   };
 }

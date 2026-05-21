@@ -13,7 +13,7 @@ Goals:
 - no cloud dependency for routine development
 - hot reload for web and API services
 - local PostgreSQL and Redis-compatible cache
-- local workspace key for controlled demo data
+- local admin credentials for authenticated demo data
 
 ## Preview
 
@@ -26,7 +26,7 @@ Goals:
 - capture operational evidence
 - verify smoke tests and health checks
 - tear down when validation is complete
-- require explicit workspace key configuration
+- require explicit workspace and auth configuration
 
 Preview environments are intentionally short-lived. This is a platform decision that prevents idle non-production infrastructure from becoming a hidden operating cost.
 
@@ -42,6 +42,6 @@ Goals:
 - CloudWatch alarms
 - backup retention
 - blue-green release path
-- explicit workspace key configuration until full authentication is implemented
+- explicit workspace and auth configuration for production access
 - operational runbooks
 - manual deployment approval

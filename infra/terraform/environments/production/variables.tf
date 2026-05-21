@@ -36,7 +36,7 @@ variable "web_app_url" {
 
 variable "workspace_api_key" {
   type        = string
-  description = "Workspace key required by operational BrokerOps API routes."
+  description = "Automation fallback key for controlled BrokerOps smoke tests; end-user routes use signed sessions."
   sensitive   = true
 
   validation {
@@ -49,4 +49,31 @@ variable "workspace_name" {
   type        = string
   description = "Display name for the production BrokerOps workspace."
   default     = "BrokerOps Production Workspace"
+}
+
+variable "auth_token_secret" {
+  type        = string
+  description = "HMAC secret used to sign BrokerOps API session tokens."
+  sensitive   = true
+
+  validation {
+    condition     = length(var.auth_token_secret) >= 40
+    error_message = "production auth_token_secret must be at least 40 characters."
+  }
+}
+
+variable "auth_admin_email" {
+  type        = string
+  description = "Initial BrokerOps admin email for the production workspace."
+}
+
+variable "auth_admin_password" {
+  type        = string
+  description = "Initial BrokerOps admin password for the production workspace."
+  sensitive   = true
+
+  validation {
+    condition     = length(var.auth_admin_password) >= 20
+    error_message = "production auth_admin_password must be at least 20 characters."
+  }
 }
