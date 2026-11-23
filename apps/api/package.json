@@ -14,9 +14,9 @@
   "dependencies": {
     "@fastify/cors": "^10.0.1",
     "@brokerops/shared": "workspace:*",
-    "fastify": "^5.0.0",
+    "fastify": "^5.12.6",
     "pg": "^8.13.0",
-    "zod": "^3.23.8"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/pg": "^8.11.10",
